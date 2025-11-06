@@ -121,13 +121,13 @@ class DomainStatusDialog extends ConsumerWidget {
             _getStatusText(domainStatus.status),
           ),
           
-          // 当前域名
+          // 当前域名（隐藏关键域名信息）
           if (domainStatus.currentDomain != null)
             _buildInfoRow(
               context,
               Icons.language,
               '当前域名',
-              domainStatus.currentDomain!,
+              _maskDomain(domainStatus.currentDomain!),
             ),
           
           // 延迟
@@ -223,7 +223,34 @@ class DomainStatusDialog extends ConsumerWidget {
     );
   }
 
-  String _getStatusText(DomainStatus status) {
+   /// 对外显示的域名打码，隐藏关键二级域名信息
+   String _maskDomain(String domain) {
+     try {
+       String host = domain;
+       try {
+         final uri = Uri.parse(domain);
+         if (uri.host.isNotEmpty) {
+           host = uri.host;
+         } else {
+           host = domain.replaceFirst(RegExp(r'^https?://'), '').split('/').first;
+         }
+       } catch (_) {
+         host = domain.replaceFirst(RegExp(r'^https?://'), '').split('/').first;
+       }
+       // 去掉端口
+       host = host.split(':').first;
+       final parts = host.split('.');
+       if (parts.length >= 2) {
+         parts[parts.length - 2] = '***';
+         return parts.join('.');
+       }
+       return host;
+     } catch (_) {
+       return domain;
+     }
+   }
+
+   String _getStatusText(DomainStatus status) {
     switch (status) {
       case DomainStatus.checking:
         return appLocalizations.domainStatusChecking;

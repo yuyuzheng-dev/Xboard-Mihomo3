@@ -120,9 +120,8 @@ Future<void> _initializeXBoardServices() async {
     print('[Main] XBoard SDK初始化成功');
     
   } catch (e) {
-    print('[Main] XBoard服务初始化失败: $e');
-    // 没有域名就失败，不需要降级
-    rethrow;
+    // 初始化失败时不要中断应用启动，允许进入登录界面
+    print('[Main] XBoard服务初始化失败（忽略并继续启动应用）: $e');
   }
 }
 
