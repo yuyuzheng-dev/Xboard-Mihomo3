@@ -202,8 +202,8 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
   Widget _buildUsageSection() {
     return Consumer(
       builder: (context, ref, child) {
-        final userInfo = ref.userInfo;
-        final subscriptionInfo = ref.subscriptionInfo;
+        final userInfo = ref.watch(userInfoProvider);
+        final subscriptionInfo = ref.watch(subscriptionInfoProvider);
         final currentProfile = ref.watch(currentProfileProvider);
         return SubscriptionUsageCard(
           subscriptionInfo: subscriptionInfo,
@@ -216,8 +216,52 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
   Widget _buildConnectionSection() {
     return Consumer(
       builder: (context, ref, child) {
-        return const XBoardConnectButton(isFloating: false);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const XBoardConnectButton(isFloating: false),
+            const SizedBox(height: 10),
+            ...List.generate(5, (index) => _buildTxtButton(context)).expand((w) => [w, const SizedBox(height: 10)]).toList()..removeLast(),
+          ],
+        );
       },
+    );
+  }
+  Widget _buildTxtButton(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? Colors.blue.shade200 : colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {},
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'txt',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
   Widget _buildProxyModeSection() {

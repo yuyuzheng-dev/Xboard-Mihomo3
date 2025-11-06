@@ -48,6 +48,8 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
           isAuthenticated: true,
           isInitialized: true,
           email: email,
+          userInfo: userInfo ?? state.userInfo,
+          subscriptionInfo: subscriptionInfo ?? state.subscriptionInfo,
         );
         
         if (userInfo != null) {
@@ -106,9 +108,10 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       // 使用域名服务获取订阅信息
       final subscriptionData = await XBoardSDK.getSubscription();
 
+      UserInfoData? userInfoData;
       try {
         // 使用域名服务获取用户信息
-        final userInfoData = await XBoardSDK.getUserInfo();
+        userInfoData = await XBoardSDK.getUserInfo();
         if (userInfoData != null) {
           await _storageService.saveUserInfo(userInfoData);
           ref.read(userInfoProvider.notifier).state = userInfoData;
@@ -125,6 +128,12 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
           ref.read(profileImportProvider.notifier).importSubscription(subscriptionData.subscribeUrl!);
         }
       }
+
+      // 同步到UserAuthState，避免界面出现“无套餐”闪烁
+      state = state.copyWith(
+        userInfo: userInfoData ?? state.userInfo,
+        subscriptionInfo: subscriptionData ?? state.subscriptionInfo,
+      );
 
       commonPrint.log('静默更新用户数据完成');
     } catch (e) {
@@ -197,6 +206,8 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
           isInitialized: true,
           email: email,
           isLoading: false,
+          userInfo: ref.read(userInfoProvider),
+          subscriptionInfo: ref.read(subscriptionInfoProvider),
         );
         state = newState;
         commonPrint.log('===== 认证状态已更新! =====');
@@ -321,8 +332,8 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       }
 
       state = state.copyWith(
-        userInfo: userInfo,
-        subscriptionInfo: subscriptionData,
+        userInfo: userInfo ?? state.userInfo,
+        subscriptionInfo: subscriptionData ?? state.subscriptionInfo,
         isLoading: false,
       );
       commonPrint.log('订阅信息已刷新');
@@ -371,8 +382,8 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       }
 
       state = state.copyWith(
-        userInfo: userInfo,
-        subscriptionInfo: subscriptionData,
+        userInfo: userInfo ?? state.userInfo,
+        subscriptionInfo: subscriptionData ?? state.subscriptionInfo,
         isLoading: false,
       );
       commonPrint.log('订阅信息已刷新');
