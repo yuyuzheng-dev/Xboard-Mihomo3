@@ -1,0 +1,131 @@
+name: build
+
+on:
+  push:
+
+env:
+  IS_STABLE: ${{ !contains(github.ref, '-') }}
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            arch: amd64
+          - platform: macos
+            os: macos-latest
+            arch: amd64
+          - platform: macos
+            os: macos-latest
+            arch: arm64
+          - platform: android
+            os: ubuntu-latest
+          - platform: linux
+            os: ubuntu-latest
+            arch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # macOS 安装 Go
+      - name: Setup Go
+        if: startsWith(matrix.platform, 'macos')
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Android Signing
+        if: startsWith(matrix.platform,'android')
+        run: |
+          echo "${{ secrets.KEYSTORE }}" | base64 --decode > android/app/keystore.jks
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/local.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/local.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/local.properties
+
+      # Windows-specific setup
+      - name: Setup Windows Build Environment
+        if: startsWith(matrix.platform, 'windows')
+        shell: bash
+        run: |
+          TOOLS_DIR="/c/runner-tools"
+          mkdir -p "$TOOLS_DIR"
+
+          # jq
+          if ! command -v jq &> /dev/null; then
+            choco install jq -y --no-progress
+            export PATH="/c/ProgramData/chocolatey/bin:$PATH"
+            echo "/c/ProgramData/chocolatey/bin" >> $GITHUB_PATH
+          fi
+          jq --version
+
+          # Inno Setup
+          INNO_SETUP_PATH="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          if [ ! -f "$INNO_SETUP_PATH" ]; then
+            choco install innosetup -y --no-progress
+          fi
+          echo "/c/Program Files (x86)/Inno Setup 6" >> $GITHUB_PATH
+
+          # Visual Studio Build Tools + ATL
+          ATL_HEADER="/c/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/*/atlmfc/include/atlstr.h"
+          if ! ls $ATL_HEADER 1> /dev/null 2>&1; then
+            choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended --quiet" -y --force
+          fi
+
+      - name: Verify Go Installation
+        run: |
+          echo "=== Go Environment ==="
+          go version
+          go env GOPATH
+          go env GOCACHE
+          go env GOMODCACHE
+
+      - name: Get Flutter Dependencies
+        run: flutter pub get
+
+      - name: Generate SDK Code
+        run: |
+          cd lib/sdk/flutter_xboard_sdk
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          cd ../../..
+
+      - name: Generate Main Project Code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Clean Swift Package Manager Cache
+        if: startsWith(matrix.platform, 'macos')
+        run: |
+          find macos -name "Package.resolved" -delete
+          rm -rf macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+          rm -rf macos/Runner.xcworkspace/xcshareddata/swiftpm/
+
+      - name: Build Project
+        run: dart setup.dart ${{ matrix.platform }} ${{ matrix.arch && format('--arch {0}', matrix.arch) }} ${{ env.IS_STABLE == 'true' && '--env stable' || '' }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ matrix.platform }}${{ matrix.arch && format('-{0}', matrix.arch) }}
+          path: ./dist
+          overwrite: true
