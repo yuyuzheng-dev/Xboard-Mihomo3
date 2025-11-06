@@ -1,0 +1,14 @@
+xboard:
+  provider: meta
+  
+  remote_config:
+    sources:
+      - name: redirect
+        url: https://www.Android22.com/config.json
+        priority: 100
+    timeout_seconds: 10
+    max_retries: 3
+  
+  log:
+    enabled: true
+    level: info
