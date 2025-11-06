@@ -9,6 +9,10 @@ final userInfoProvider = StateProvider<UserInfoData?>((ref) => null);
 final subscriptionInfoProvider = StateProvider<SubscriptionData?>((ref) => null);
 final userUIStateProvider = StateProvider<UIState>((ref) => const UIState());
 
+// 缓存时间戳提供者（用于判断缓存是否过期）
+final subscriptionCacheTimestampProvider = StateProvider<int>((ref) => 0);
+final userInfoCacheTimestampProvider = StateProvider<int>((ref) => 0);
+
 class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
   late final XBoardStorageService _storageService;
 
@@ -18,7 +22,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     return const UserAuthState();
   }
 
-  /// 稳定的 quickAuth 实现：一次性加载本地缓存，无自动后台刷新
+  /// 稳定的 quickAuth 实现：优先使用本地缓存，确保不显示空状态
   Future<bool> quickAuth() async {
     try {
       commonPrint.log('快速认证检查：检查域名服务登录状态...');
@@ -43,30 +47,47 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       UserInfoData? finalUserInfo;
       SubscriptionData? finalSubscription;
 
-      // 读取本地存储
+      // 读取本地存储 - 优先级策略：总是尝试加载，即使失败也不清空
       try {
         final emailResult = await _storageService.getUserEmail().timeout(const Duration(seconds: 3));
         email = emailResult.dataOrNull;
+        if (email != null) {
+          commonPrint.log('从缓存读取 email: $email');
+        }
       } catch (e) {
-        commonPrint.log('读取本地 email 失败: $e');
+        commonPrint.log('读取本地 email 失败，但继续: $e');
+        // 保持上一次的 email（如果有）
+        email = state.email;
       }
 
       try {
         final userInfoResult = await _storageService.getUserInfo().timeout(const Duration(seconds: 3));
         finalUserInfo = userInfoResult.dataOrNull;
+        if (finalUserInfo != null) {
+          commonPrint.log('从缓存读取用户信息: ${finalUserInfo.email}');
+          ref.read(userInfoCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
+        }
       } catch (e) {
-        commonPrint.log('读取本地 userInfo 失败: $e');
+        commonPrint.log('读取本地 userInfo 失败，但继续: $e');
+        // 保持上一次的用户信息（如果有）
+        finalUserInfo = state.userInfo;
       }
 
       try {
         final subscriptionResult = await _storageService.getSubscriptionInfo().timeout(const Duration(seconds: 3));
         finalSubscription = subscriptionResult.dataOrNull;
+        if (finalSubscription != null) {
+          commonPrint.log('从缓存读取订阅信息: ${finalSubscription.subscribeUrl}');
+          ref.read(subscriptionCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
+        }
       } catch (e) {
-        commonPrint.log('读取本地 subscription 失败: $e');
+        commonPrint.log('读取本地 subscription 失败，但继续: $e');
+        // 保持上一次的订阅信息（如果有）
+        finalSubscription = state.subscriptionInfo;
       }
 
-      // ===== 核心改进：一次性原子更新状态 + provider =====
-      // 先批量更新 provider（不触发额外重建）
+      // ===== 核心改进：确保数据一致性，避免null覆盖有效缓存 =====
+      // 先批量更新 provider（使用有效的缓存数据）
       if (finalUserInfo != null) {
         ref.read(userInfoProvider.notifier).state = finalUserInfo;
       }
@@ -78,20 +99,21 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       state = state.copyWith(
         isAuthenticated: true,
         isInitialized: true,
-        email: email,
-        userInfo: finalUserInfo,
-        subscriptionInfo: finalSubscription,
+        email: email ?? state.email,
+        userInfo: finalUserInfo ?? state.userInfo,
+        subscriptionInfo: finalSubscription ?? state.subscriptionInfo,
       );
 
-      commonPrint.log('快速认证成功：已有token，进入主界面');
+      commonPrint.log('快速认证成功：已有token，使用缓存数据进入主界面');
+      commonPrint.log('当前缓存 - email: ${state.email}, 有用户信息: ${state.userInfo != null}, 有订阅信息: ${state.subscriptionInfo != null}');
 
       // 后台仅做 token 有效性检查（不自动刷新，不触发UI更新）
       _backgroundTokenValidation();
 
       // 自动导入订阅配置
-      if (finalSubscription?.subscribeUrl?.isNotEmpty == true) {
-        commonPrint.log('启动时自动导入订阅: ${finalSubscription!.subscribeUrl}');
-        ref.read(profileImportProvider.notifier).importSubscription(finalSubscription.subscribeUrl!);
+      if (state.subscriptionInfo?.subscribeUrl?.isNotEmpty == true) {
+        commonPrint.log('启动时自动导入订阅: ${state.subscriptionInfo!.subscribeUrl}');
+        ref.read(profileImportProvider.notifier).importSubscription(state.subscriptionInfo!.subscribeUrl!);
       }
 
       return true;
@@ -183,9 +205,11 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         // ===== 批量更新：先更新provider，再更新认证状态（一次性） =====
         if (userInfo != null) {
           ref.read(userInfoProvider.notifier).state = userInfo;
+          ref.read(userInfoCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
         }
         if (subscriptionInfo != null) {
           ref.read(subscriptionInfoProvider.notifier).state = subscriptionInfo;
+          ref.read(subscriptionCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
         }
 
         commonPrint.log('准备更新认证状态...');
@@ -302,7 +326,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     }
   }
 
-  /// 支付成功后刷新订阅信息
+  /// 支付成功后刷新订阅信息（强制刷新，更新缓存）
   Future<void> refreshSubscriptionInfoAfterPayment() async {
     if (!state.isAuthenticated) {
       return;
@@ -319,23 +343,29 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         userInfo = await XBoardSDK.getUserInfo();
       } catch (e) {
         commonPrint.log('获取用户信息失败: $e');
+        // 网络失败时保持缓存
+        userInfo = state.userInfo;
       }
 
       try {
         subscriptionData = await XBoardSDK.getSubscription();
       } catch (e) {
         commonPrint.log('获取订阅信息失败: $e');
+        // 网络失败时保持缓存
+        subscriptionData = state.subscriptionInfo;
       }
 
-      // 批量保存
-      if (userInfo != null) {
+      // 只有网络成功才更新缓存
+      if (userInfo != null && userInfo != state.userInfo) {
         await _storageService.saveUserInfo(userInfo);
+        ref.read(userInfoCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
       }
-      if (subscriptionData != null) {
+      if (subscriptionData != null && subscriptionData != state.subscriptionInfo) {
         await _storageService.saveSubscriptionInfo(subscriptionData);
+        ref.read(subscriptionCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
       }
 
-      // ===== 一次性批量更新 =====
+      // ===== 一次性批量更新，使用缓存数据作为后备 =====
       if (userInfo != null) {
         ref.read(userInfoProvider.notifier).state = userInfo;
       }
@@ -351,10 +381,11 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       commonPrint.log('订阅信息已刷新');
 
       // 自动导入订阅
-      if (subscriptionData?.subscribeUrl?.isNotEmpty == true) {
-        commonPrint.log('[支付成功] 开始重新导入订阅配置: ${subscriptionData!.subscribeUrl}');
+      final finalSubscription = subscriptionData ?? state.subscriptionInfo;
+      if (finalSubscription?.subscribeUrl?.isNotEmpty == true) {
+        commonPrint.log('[支付成功] 开始重新导入订阅配置: ${finalSubscription!.subscribeUrl}');
         ref.read(profileImportProvider.notifier).importSubscription(
-          subscriptionData.subscribeUrl!,
+          finalSubscription.subscribeUrl!,
           forceRefresh: true,
         );
       } else {
@@ -385,22 +416,29 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         userInfo = await XBoardSDK.getUserInfo();
       } catch (e) {
         commonPrint.log('获取用户信息失败: $e');
+        // 网络失败时保持缓存
+        userInfo = state.userInfo;
       }
 
       try {
         subscriptionData = await XBoardSDK.getSubscription();
       } catch (e) {
         commonPrint.log('获取订阅信息失败: $e');
+        // 网络失败时保持缓存
+        subscriptionData = state.subscriptionInfo;
       }
 
-      if (userInfo != null) {
+      // 只有网络成功才更新缓存
+      if (userInfo != null && userInfo != state.userInfo) {
         await _storageService.saveUserInfo(userInfo);
+        ref.read(userInfoCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
       }
-      if (subscriptionData != null) {
+      if (subscriptionData != null && subscriptionData != state.subscriptionInfo) {
         await _storageService.saveSubscriptionInfo(subscriptionData);
+        ref.read(subscriptionCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
       }
 
-      // ===== 一次性批量更新 =====
+      // ===== 一次性批量更新，使用缓存数据作为后备 =====
       if (userInfo != null) {
         ref.read(userInfoProvider.notifier).state = userInfo;
       }
@@ -415,10 +453,11 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       );
       commonPrint.log('订阅信息已手动刷新');
 
-      if (subscriptionData?.subscribeUrl?.isNotEmpty == true) {
-        commonPrint.log('[手动刷新] 开始导入订阅配置: ${subscriptionData!.subscribeUrl}');
+      final finalSubscription = subscriptionData ?? state.subscriptionInfo;
+      if (finalSubscription?.subscribeUrl?.isNotEmpty == true) {
+        commonPrint.log('[手动刷新] 开始导入订阅配置: ${finalSubscription!.subscribeUrl}');
         ref.read(profileImportProvider.notifier).importSubscription(
-          subscriptionData.subscribeUrl!,
+          finalSubscription.subscribeUrl!,
           forceRefresh: true,
         );
       } else {
@@ -444,11 +483,15 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       if (userInfoData != null) {
         await _storageService.saveUserInfo(userInfoData);
         ref.read(userInfoProvider.notifier).state = userInfoData;
+        ref.read(userInfoCacheTimestampProvider.notifier).state = DateTime.now().millisecondsSinceEpoch;
         state = state.copyWith(userInfo: userInfoData);
         commonPrint.log('用户详细信息已手动刷新');
+      } else {
+        // 网络失败时保持缓存
+        commonPrint.log('获取用户信息失败，保持缓存');
       }
     } catch (e) {
-      commonPrint.log('刷新用户详细信息出错: $e');
+      commonPrint.log('刷新用户详细信息出错，保持缓存: $e');
     }
   }
 
@@ -456,6 +499,10 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     commonPrint.log('用户登出');
     await XBoardSDK.logout();
     await _storageService.clearAuthData();
+    ref.read(userInfoProvider.notifier).state = null;
+    ref.read(subscriptionInfoProvider.notifier).state = null;
+    ref.read(userInfoCacheTimestampProvider.notifier).state = 0;
+    ref.read(subscriptionCacheTimestampProvider.notifier).state = 0;
     state = const UserAuthState(isInitialized: true);
   }
 
