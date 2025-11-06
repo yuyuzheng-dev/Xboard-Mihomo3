@@ -18,7 +18,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     return const UserAuthState();
   }
 
-  /// 稳定的 quickAuth 实现：一次性状态更新，避免竞态和频繁UI重建
+  /// 稳定的 quickAuth 实现：一次性加载本地缓存，无自动后台刷新
   Future<bool> quickAuth() async {
     try {
       commonPrint.log('快速认证检查：检查域名服务登录状态...');
@@ -36,14 +36,8 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         return false;
       }
 
-      // 如果有 token，并发读取本地缓存和短超时的网络请求
-      commonPrint.log('发现 token，开始并发读取缓存与网络补充');
-
-      // 启动并发任务（短超时）
-      final networkSubscriptionFuture = XBoardSDK.getSubscription()
-          .timeout(const Duration(seconds: 3), onTimeout: () => null);
-      final networkUserInfoFuture = XBoardSDK.getUserInfo()
-          .timeout(const Duration(seconds: 3), onTimeout: () => null);
+      // 如果有 token，直接读取本地缓存（快速进入主界面）
+      commonPrint.log('发现 token，直接从本地缓存恢复状态');
 
       String? email;
       UserInfoData? finalUserInfo;
@@ -71,31 +65,6 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         commonPrint.log('读取本地 subscription 失败: $e');
       }
 
-      // 如果本地缺数据，尝试短时网络补充
-      if (finalUserInfo == null) {
-        try {
-          final netUser = await networkUserInfoFuture;
-          if (netUser != null) {
-            finalUserInfo = netUser;
-            commonPrint.log('从网络补充用户信息');
-          }
-        } catch (e) {
-          commonPrint.log('短时网络获取用户信息失败: $e');
-        }
-      }
-
-      if (finalSubscription == null) {
-        try {
-          final netSub = await networkSubscriptionFuture;
-          if (netSub != null) {
-            finalSubscription = netSub;
-            commonPrint.log('从网络补充订阅信息');
-          }
-        } catch (e) {
-          commonPrint.log('短时网络获取订阅失败: $e');
-        }
-      }
-
       // ===== 核心改进：一次性原子更新状态 + provider =====
       // 先批量更新 provider（不触发额外重建）
       if (finalUserInfo != null) {
@@ -116,8 +85,8 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
 
       commonPrint.log('快速认证成功：已有token，进入主界面');
 
-      // 后台启动完整验证（不阻塞，不修改主状态）
-      _backgroundTokenValidationAndRefresh();
+      // 后台仅做 token 有效性检查（不自动刷新，不触发UI更新）
+      _backgroundTokenValidation();
 
       // 自动导入订阅配置
       if (finalSubscription?.subscribeUrl?.isNotEmpty == true) {
@@ -133,94 +102,23 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     }
   }
 
-  /// 后台验证token并刷新数据（纯后台任务，不修改主认证状态）
-  void _backgroundTokenValidationAndRefresh() {
-    Future.delayed(const Duration(milliseconds: 1000), () async {
+  /// 后台仅验证token是否过期（轻量级检查，不自动刷新）
+  void _backgroundTokenValidation() {
+    Future.delayed(const Duration(milliseconds: 1500), () async {
       try {
-        commonPrint.log('后台验证token有效性...');
+        commonPrint.log('后台检查token有效性...');
         final isValid = await XBoardSDK.isLoggedIn();
         
         if (!isValid) {
           commonPrint.log('Token验证失败，标记过期');
           state = state.copyWith(errorMessage: 'TOKEN_EXPIRED');
         } else {
-          commonPrint.log('Token验证成功，后台更新用户数据');
-          // 更新用户和订阅数据，但不修改认证状态
-          await _backgroundUpdateUserData();
+          commonPrint.log('Token验证成功，等待用户手动刷新');
         }
       } catch (e) {
         commonPrint.log('后台token验证异常: $e');
       }
     });
-  }
-
-  /// 后台更新用户数据：批量化更新，避免频繁重建
-  Future<void> _backgroundUpdateUserData() async {
-    try {
-      commonPrint.log('后台获取最新用户数据...');
-      
-      UserInfoData? updatedUserInfo;
-      SubscriptionData? updatedSubscription;
-
-      // 并发获取
-      try {
-        updatedUserInfo = await XBoardSDK.getUserInfo();
-      } catch (e) {
-        commonPrint.log('后台获取用户信息失败: $e');
-      }
-
-      try {
-        updatedSubscription = await XBoardSDK.getSubscription();
-      } catch (e) {
-        commonPrint.log('后台获取订阅信息失败: $e');
-      }
-
-      // 批量保存到存储
-      if (updatedUserInfo != null) {
-        try {
-          await _storageService.saveUserInfo(updatedUserInfo);
-        } catch (e) {
-          commonPrint.log('保存用户信息失败: $e');
-        }
-      }
-
-      if (updatedSubscription != null) {
-        try {
-          await _storageService.saveSubscriptionInfo(updatedSubscription);
-        } catch (e) {
-          commonPrint.log('保存订阅信息失败: $e');
-        }
-      }
-
-      // ===== 批量更新：一次性修改state和provider =====
-      if (updatedUserInfo != null) {
-        ref.read(userInfoProvider.notifier).state = updatedUserInfo;
-      }
-      if (updatedSubscription != null) {
-        ref.read(subscriptionInfoProvider.notifier).state = updatedSubscription;
-      }
-
-      // 只在有真实数据变化时更新认证状态（单次更新）
-      if (updatedUserInfo != null || updatedSubscription != null) {
-        state = state.copyWith(
-          userInfo: updatedUserInfo ?? state.userInfo,
-          subscriptionInfo: updatedSubscription ?? state.subscriptionInfo,
-        );
-        commonPrint.log('后台数据更新完成');
-      }
-
-      // 如果订阅链接有效，触发导入（但不阻塞）
-      final curSubscription = updatedSubscription ?? ref.read(subscriptionInfoProvider);
-      if (curSubscription?.subscribeUrl?.isNotEmpty == true) {
-        commonPrint.log('后台导入订阅配置: ${curSubscription!.subscribeUrl}');
-        ref.read(profileImportProvider.notifier).importSubscription(
-          curSubscription.subscribeUrl!,
-          forceRefresh: true,
-        );
-      }
-    } catch (e) {
-      commonPrint.log('后台更新用户数据失败: $e');
-    }
   }
 
   void clearTokenExpiredError() {
@@ -471,14 +369,14 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     }
   }
 
-  /// 手动刷新订阅信息
+  /// 用户手动刷新订阅信息（从卡片刷新按钮调用）
   Future<void> refreshSubscriptionInfo() async {
     if (!state.isAuthenticated) {
       return;
     }
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      commonPrint.log('手动刷新订阅信息...');
+      commonPrint.log('用户手动刷新订阅信息...');
       
       UserInfoData? userInfo;
       SubscriptionData? subscriptionData;
@@ -515,7 +413,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         subscriptionInfo: subscriptionData ?? state.subscriptionInfo,
         isLoading: false,
       );
-      commonPrint.log('订阅信息已刷新');
+      commonPrint.log('订阅信息已手动刷新');
 
       if (subscriptionData?.subscribeUrl?.isNotEmpty == true) {
         commonPrint.log('[手动刷新] 开始导入订阅配置: ${subscriptionData!.subscribeUrl}');
@@ -535,19 +433,19 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     }
   }
 
-  /// 刷新用户信息
+  /// 用户手动刷新用户信息（从卡片刷新按钮调用）
   Future<void> refreshUserInfo() async {
     if (!state.isAuthenticated) {
       return;
     }
     try {
-      commonPrint.log('刷新用户详细信息...');
+      commonPrint.log('用户手动刷新用户详细信息...');
       final userInfoData = await XBoardSDK.getUserInfo();
       if (userInfoData != null) {
         await _storageService.saveUserInfo(userInfoData);
         ref.read(userInfoProvider.notifier).state = userInfoData;
         state = state.copyWith(userInfo: userInfoData);
-        commonPrint.log('用户详细信息已刷新');
+        commonPrint.log('用户详细信息已手动刷新');
       }
     } catch (e) {
       commonPrint.log('刷新用户详细信息出错: $e');
