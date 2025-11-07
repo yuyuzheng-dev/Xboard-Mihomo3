@@ -7,13 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_clash/l10n/l10n.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:fl_clash/xboard/features/shared/shared.dart';
 import 'package:fl_clash/xboard/features/latency/services/auto_latency_service.dart';
 import 'package:fl_clash/xboard/features/subscription/services/subscription_status_checker.dart';
 import 'package:fl_clash/xboard/features/auth/pages/login_page.dart';
-import 'package:fl_clash/xboard/features/invite/dialogs/theme_dialog.dart';
 import 'package:fl_clash/xboard/features/invite/dialogs/logout_dialog.dart';
 import '../widgets/subscription_usage_card.dart';
 import '../widgets/xboard_connect_button.dart';
@@ -85,20 +83,6 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
     return Scaffold(
       appBar: isDesktop ? null : AppBar(
         automaticallyImplyLeading: false,
-        leadingWidth: 120,
-        leading: TextButton.icon(
-          icon: const Icon(Icons.support_agent, size: 20),
-          label: Text(appLocalizations.onlineSupport),
-          onPressed: () {
-            // 移动端独有的按钮，使用 push 创建路由栈
-            context.push('/support');
-          },
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.card_giftcard, size: 20),
@@ -224,7 +208,7 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
           children: [
             const XBoardConnectButton(isFloating: false),
             const SizedBox(height: 10),
-            ...List.generate(5, (index) => _buildTxtButton(context, index)).expand((w) => [w, const SizedBox(height: 10)]).toList()..removeLast(),
+            ...List.generate(3, (index) => _buildTxtButton(context, index)).expand((w) => [w, const SizedBox(height: 10)]).toList()..removeLast(),
           ],
         );
       },
@@ -233,7 +217,7 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
   Widget _buildTxtButton(BuildContext context, int index) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? Colors.blue.shade200 : colorScheme.primary;
+    final backgroundColor = index == 2 ? Colors.red : (isDark ? Colors.blue.shade200 : colorScheme.primary);
     final appLocalizations = AppLocalizations.of(context);
 
     // 根据索引设置按钮文本与功能
@@ -255,39 +239,6 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
         };
         break;
       case 2:
-        label = appLocalizations.contactSupport; // 联系客服 -> 内置网页
-        onTap = () async {
-          final uri = Uri.parse('https://www.baidu.com');
-          if (!await canLaunchUrl(uri)) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(appLocalizations.openWebFailed)),
-              );
-            }
-            return;
-          }
-          final launched = await launchUrl(
-            uri,
-            mode: LaunchMode.inAppWebView,
-          );
-          if (!launched && context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(appLocalizations.openWebFailed)),
-            );
-          }
-        };
-        break;
-      case 3:
-        label = appLocalizations.switchTheme; // 切换主题
-        onTap = () async {
-          if (!context.mounted) return;
-          showDialog(
-            context: context,
-            builder: (context) => const ThemeDialog(),
-          );
-        };
-        break;
-      case 4:
         label = appLocalizations.logout; // 退出登录
         onTap = () async {
           if (!context.mounted) return;
@@ -323,7 +274,7 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
                     label,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.black : Colors.white,
+                      color: index == 2 ? Colors.white : (isDark ? Colors.black : Colors.white),
                     ),
                   ),
                 ],

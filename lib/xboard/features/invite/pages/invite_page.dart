@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/xboard/features/invite/providers/invite_provider.dart';
-import 'package:fl_clash/xboard/features/invite/widgets/user_menu_widget.dart';
 import 'package:fl_clash/xboard/features/invite/widgets/error_card.dart';
 import 'package:fl_clash/xboard/features/invite/widgets/invite_rules_card.dart';
 import 'package:fl_clash/xboard/features/invite/widgets/invite_qr_card.dart';
@@ -44,18 +41,8 @@ class _InvitePageState extends ConsumerState<InvitePage>
   Widget build(BuildContext context) {
     super.build(context);  // 必须调用，配合 AutomaticKeepAliveClientMixin
     
-    final appLocalizations = AppLocalizations.of(context);
-    // 根据操作系统平台判断设备类型
-    final isDesktop = Platform.isLinux || Platform.isWindows || Platform.isMacOS;
-    
     return Scaffold(
-      appBar: isDesktop ? null : AppBar(
-        title: Text(appLocalizations.invite),
-        automaticallyImplyLeading: false,
-        actions: const [
-          UserMenuWidget(),
-        ],
-      ),
+      appBar: null,
       body: Consumer(
         builder: (_, ref, __) {
           return RefreshIndicator(
