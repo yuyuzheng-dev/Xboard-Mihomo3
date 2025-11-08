@@ -193,11 +193,17 @@ class XBoardOutboundMode extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                _getModeDescription(mode, tunEnabled, context),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
-                  fontSize: 12,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: Text(
+                  _getModeDescription(mode, tunEnabled, context),
+                  key: ValueKey<String>('desc_${mode.name}_${tunEnabled ? '1' : '0'}'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
