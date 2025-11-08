@@ -21,6 +21,23 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       autoLatencyService.initialize(ref);
+      // 在首帧后注册监听，避免在build中重复注册导致的性能开销
+      ref.listenManual(runTimeProvider, (previous, next) {
+        final wasConnected = previous != null;
+        final isConnected = next != null;
+        if (wasConnected != isConnected) {
+          autoLatencyService.onConnectionStatusChanged(isConnected);
+        }
+      });
+      ref.listenManual(selectedMapProvider, (previous, next) {
+        if (previous != null && next != previous) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              autoLatencyService.onNodeChanged();
+            }
+          });
+        }
+      });
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           autoLatencyService.testCurrentNode();
@@ -37,24 +54,18 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
     final groups = ref.watch(groupsProvider);
     final selectedMap = ref.watch(selectedMapProvider);
     final mode = ref.watch(patchClashConfigProvider.select((state) => state.mode));
-    ref.listen(runTimeProvider, (previous, next) {
-      final wasConnected = previous != null;
-      final isConnected = next != null;
-      if (wasConnected != isConnected) {
-        autoLatencyService.onConnectionStatusChanged(isConnected);
-      }
-    });
-    ref.listen(selectedMapProvider, (previous, next) {
-      if (previous != null && next != previous) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          if (mounted) {
-            autoLatencyService.onNodeChanged();
-          }
-        });
-      }
-    });
+
+
     if (groups.isEmpty) {
-      return _buildEmptyState(context);
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: RepaintBoundary(
+          key: const ValueKey('empty'),
+          child: _buildEmptyState(context),
+        ),
+      );
     }
     Group? currentGroup;
     Proxy? currentProxy;
@@ -100,7 +111,15 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
       }
     }
     if (currentGroup == null || currentGroup.all.isEmpty) {
-      return _buildEmptyState(context);
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: RepaintBoundary(
+          key: const ValueKey('empty'),
+          child: _buildEmptyState(context),
+        ),
+      );
     }
     final selectedProxyName = selectedMap[currentGroup.name] ?? "";
     String realNodeName;
@@ -118,17 +137,36 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
       currentProxy = currentGroup.all.first;
     }
     _checkNodeChange(currentProxy);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: _buildProxyDisplay(context, currentGroup, currentProxy),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) {
+        final offsetAnimation = Tween<Offset>(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: offsetAnimation, child: child),
+        );
+      },
+      child: RepaintBoundary(
+        key: ValueKey<String>('proxy_${currentProxy.name}'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildProxyDisplay(context, currentGroup, currentProxy),
+        ),
+      ),
     );
   }
   Widget _buildProxyDisplay(BuildContext context, Group group, Proxy proxy) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
       child: InkWell(
         onTap: () {
           Navigator.of(context).push(
@@ -164,13 +202,19 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      proxy.name,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: Text(
+                        proxy.name,
+                        key: ValueKey<String>('name_${proxy.name}'),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
                     _buildProxyLatency(proxy),
@@ -208,6 +252,7 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
           ),
         ),
       ),
+      ),
     );
   }
   Widget _buildProxyLatency(Proxy proxy) {
@@ -215,10 +260,12 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
       proxyName: proxy.name,
       testUrl: ref.read(appSettingProvider).testUrl,
     ));
-    return LatencyIndicator(
-      delayValue: delayState,
-      onTap: () => _handleManualTest(proxy),
-      showIcon: true,
+    return RepaintBoundary(
+      child: LatencyIndicator(
+        delayValue: delayState,
+        onTap: () => _handleManualTest(proxy),
+        showIcon: true,
+      ),
     );
   }
   Widget _buildEmptyState(BuildContext context) {

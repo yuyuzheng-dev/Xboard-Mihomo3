@@ -82,8 +82,8 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
     
     return Scaffold(
       appBar: null, 
-      body: Consumer(
-        builder: (_, ref, __) {
+      body: Builder(
+        builder: (context) {
           // 获取屏幕高度并计算自适应间距
           final screenHeight = MediaQuery.of(context).size.height;
           final appBarHeight = 0.0;
@@ -92,79 +92,79 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
           final availableHeight = screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
           
           // 根据可用高度调整间距
-        double sectionSpacing;
-        double verticalPadding;
-        double horizontalPadding;
-        
-        if (availableHeight < 500) {
-          // 小屏幕：紧凑布局
-          sectionSpacing = 8.0;
-          verticalPadding = 8.0;
-          horizontalPadding = 12.0;
-        } else if (availableHeight < 650) {
-          // 中等屏幕：适中布局
-          sectionSpacing = 10.0;
-          verticalPadding = 10.0;
-          horizontalPadding = 16.0;
-        } else {
-          // 大屏幕：标准布局
-          sectionSpacing = 14.0;
-          verticalPadding = 12.0;
-          horizontalPadding = 16.0;
-        }
-        
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                Theme.of(context).colorScheme.surface,
-              ],
+          double sectionSpacing;
+          double verticalPadding;
+          double horizontalPadding;
+          
+          if (availableHeight < 500) {
+            // 小屏幕：紧凑布局
+            sectionSpacing = 8.0;
+            verticalPadding = 8.0;
+            horizontalPadding = 12.0;
+          } else if (availableHeight < 650) {
+            // 中等屏幕：适中布局
+            sectionSpacing = 10.0;
+            verticalPadding = 10.0;
+            horizontalPadding = 16.0;
+          } else {
+            // 大屏幕：标准布局
+            sectionSpacing = 14.0;
+            verticalPadding = 12.0;
+            horizontalPadding = 16.0;
+          }
+          
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  Theme.of(context).colorScheme.surface,
+                ],
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(vertical: verticalPadding),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - (2 * verticalPadding),
-                    ),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const NoticeBanner(),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                            child: _buildUsageSection(),
-                          ),
-                          SizedBox(height: sectionSpacing),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                            child: _buildProxyModeSection(),
-                          ),
-                          SizedBox(height: sectionSpacing),
-                          const NodeSelectorBar(),
-                          SizedBox(height: sectionSpacing),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                            child: _buildConnectionSection(),
-                          ),
-                          // 添加弹性空间，确保内容不会太紧凑
-                          if (availableHeight > 600) const Spacer(),
-                        ],
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - (2 * verticalPadding),
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const NoticeBanner(),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                              child: _buildUsageSection(),
+                            ),
+                            SizedBox(height: sectionSpacing),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                              child: _buildProxyModeSection(),
+                            ),
+                            SizedBox(height: sectionSpacing),
+                            const NodeSelectorBar(),
+                            SizedBox(height: sectionSpacing),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                              child: _buildConnectionSection(),
+                            ),
+                            // 添加弹性空间，确保内容不会太紧凑
+                            if (availableHeight > 600) const Spacer(),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        );
+          );
         },
       ),
     );

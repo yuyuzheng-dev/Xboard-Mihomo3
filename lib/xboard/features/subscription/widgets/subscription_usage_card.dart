@@ -41,11 +41,12 @@ class SubscriptionUsageCard extends ConsumerWidget {
     return _buildUsageCard(theme, context);
   }
   Widget _buildEmptyCard(ThemeData theme, BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -70,7 +71,8 @@ class SubscriptionUsageCard extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
   Widget _buildStatusCard(SubscriptionStatusResult statusResult, ThemeData theme, BuildContext context) {
     IconData statusIcon;
@@ -102,19 +104,20 @@ class SubscriptionUsageCard extends ConsumerWidget {
         statusText = statusResult.getMessage(context);
         statusDetail = statusResult.getDetailMessage(context) ?? '';
     }
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            statusColor.withValues(alpha: 0.03),
-            statusColor.withValues(alpha: 0.01),
-          ],
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              statusColor.withValues(alpha: 0.03),
+              statusColor.withValues(alpha: 0.01),
+            ],
+          ),
         ),
-      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -235,6 +238,7 @@ class SubscriptionUsageCard extends ConsumerWidget {
           ),
         ],
       ),
+      ),
     );
   }
   
@@ -295,19 +299,20 @@ class SubscriptionUsageCard extends ConsumerWidget {
     final usedTraffic = _getUsedTraffic();
     final totalTraffic = _getTotalTraffic();
     final remainingDays = _calculateRemainingDays();
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: 0.03),
-            theme.colorScheme.secondary.withValues(alpha: 0.02),
-          ],
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary.withValues(alpha: 0.03),
+              theme.colorScheme.secondary.withValues(alpha: 0.02),
+            ],
+          ),
         ),
-      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,6 +407,7 @@ class SubscriptionUsageCard extends ConsumerWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

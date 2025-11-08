@@ -101,17 +101,26 @@ class _XBoardConnectButtonState extends ConsumerState<XBoardConnectButton>
       child: AnimatedBuilder(
         animation: _controller.view,
         builder: (_, child) {
-          final textWidth = globalState.measure
+          final labelStyle = Theme.of(context).textTheme.titleMedium?.toSoftBold;
+          final timeWidth = globalState.measure
                   .computeTextSize(
-                    Text(
-                      utils.getTimeDifference(
-                        DateTime.now(),
-                      ),
-                      style: context.textTheme.titleMedium?.toSoftBold,
+                    const Text(
+                      '99:59:59',
                     ),
                   )
                   .width +
               16;
+          final startLabel = AppLocalizations.of(context).xboardStartProxy;
+          final startWidth = globalState.measure
+                  .computeTextSize(
+                    Text(
+                      startLabel,
+                      style: labelStyle,
+                    ),
+                  )
+                  .width +
+              16;
+          final textWidth = timeWidth > startWidth ? timeWidth : startWidth;
           return FloatingActionButton.extended(
             clipBehavior: Clip.antiAlias,
             materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -124,8 +133,14 @@ class _XBoardConnectButtonState extends ConsumerState<XBoardConnectButton>
               progress: _animation,
             ),
             label: SizedBox(
-              width: textWidth * _animation.value,
-              child: child!,
+              width: textWidth,
+              child: ClipRect(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: _animation.value,
+                  child: child!,
+                ),
+              ),
             ),
           );
         },
@@ -156,9 +171,10 @@ class _XBoardConnectButtonState extends ConsumerState<XBoardConnectButton>
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: AnimatedBuilder(
-        animation: _controller.view,
-        builder: (_, child) {
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _controller.view,
+          builder: (_, child) {
           return Container(
             decoration: BoxDecoration(
               color: isStart ? startColor : stopColor,
@@ -222,6 +238,7 @@ class _XBoardConnectButtonState extends ConsumerState<XBoardConnectButton>
             ),
           );
         },
+      ),
       ),
     );
   }
