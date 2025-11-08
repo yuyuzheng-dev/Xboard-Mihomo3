@@ -5,7 +5,6 @@ import 'package:fl_clash/xboard/features/domain_status/domain_status.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
 import 'package:fl_clash/xboard/features/shared/shared.dart';
@@ -111,7 +110,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             );
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
-                context.go('/');
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/', 
+                  (route) => false,
+                );
               }
             });
           }
@@ -133,7 +135,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _loadSavedCredentials();
     _checkDomainStatus();
   }
-  
   void _navigateToForgotPassword() async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
@@ -151,9 +152,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          actions: const [
-            LanguageSelector(),
-            SizedBox(width: 16),
+          actions: [
+            const LanguageSelector(),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: GestureDetector(
+                onTap: () => showDomainStatusDialog(context),
+                child: const DomainStatusIndicator(),
+              ),
+            ),
           ],
         ),
         extendBodyBehindAppBar: true,
@@ -286,16 +294,55 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       const SizedBox(height: 32),
                       SizedBox(
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: domainStatus.isReady && !userState.isLoading ? _login : null,
-                          child: userState.isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Text(appLocalizations.xboardLogin),
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: domainStatus.isReady ? _login : null,
+                          style: ElevatedButton.styleFrom(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              gradient: domainStatus.isReady
+                                  ? LinearGradient(
+                                      colors: [
+                                        colorScheme.primary,
+                                        colorScheme.primaryContainer,
+                                      ],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                    )
+                                  : null,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Container(
+                              alignment: Alignment.center,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: userState.isLoading
+                                    ? SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            colorScheme.onPrimary,
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        appLocalizations.xboardLogin,
+                                        style: textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onPrimary,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
