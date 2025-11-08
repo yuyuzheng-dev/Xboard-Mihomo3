@@ -21,13 +21,30 @@ class InvitePage extends ConsumerStatefulWidget {
 class _InvitePageState extends ConsumerState<InvitePage> 
     with AutomaticKeepAliveClientMixin {
   bool _hasInitialized = false;
-  
+  int _systemBackCount = 0;
+
   void _handleBack(BuildContext context) {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     } else {
       context.go('/');
     }
+  }
+
+  void _handleSystemBack(BuildContext context) {
+    _systemBackCount += 1;
+    if (_systemBackCount < 3) {
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      messenger?.hideCurrentSnackBar();
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text('再次按返回键返回'),
+          duration: Duration(milliseconds: 800),
+        ),
+      );
+      return;
+    }
+    _handleBack(context);
   }
   
   @override
@@ -108,10 +125,10 @@ class _InvitePageState extends ConsumerState<InvitePage>
     } else {
       return PopScope(
         canPop: false,
-        // 禁用系统返回键与手势返回，仅允许左上角返回按钮
+        // 系统返回键：前两次提示，第三次正常返回；左上角返回不变
         onPopInvokedWithResult: (didPop, result) {
-          // 阻止系统返回，什么也不做
           if (didPop) return;
+          _handleSystemBack(context);
         },
         child: scaffold,
       );

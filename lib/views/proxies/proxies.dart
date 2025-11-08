@@ -2,6 +2,7 @@ import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/common.dart';
 import 'package:fl_clash/providers/providers.dart';
+import 'package:fl_clash/views/proxies/common.dart' as proxies_common;
 import 'package:fl_clash/views/proxies/list.dart';
 import 'package:fl_clash/views/proxies/providers.dart';
 import 'package:fl_clash/widgets/widgets.dart';
@@ -30,20 +31,32 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
             onPressed: () {
               _proxiesTabKey.currentState?.scrollToGroupSelected();
             },
-            icon: Icon(
+            icon: const Icon(
               Icons.adjust,
               weight: 1,
             ),
           ),
+        IconButton(
+          tooltip: appLocalizations.delay,
+          onPressed: () async {
+            final groups = ref.read(currentGroupsStateProvider).value;
+            final proxies = <Proxy>[];
+            for (final group in groups) {
+              proxies.addAll(group.all);
+            }
+            await proxies_common.delayTest(proxies);
+          },
+          icon: const Icon(Icons.network_ping),
+        ),
         CommonPopupBox(
           targetBuilder: (open) {
             return IconButton(
               onPressed: () {
                 open(
-                  offset: Offset(0, 20),
+                  offset: const Offset(0, 20),
                 );
               },
-              icon: Icon(
+              icon: const Icon(
                 Icons.more_vert,
               ),
             );

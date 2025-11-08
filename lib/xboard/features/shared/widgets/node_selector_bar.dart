@@ -178,8 +178,8 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
                 ),
               ),
               const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
+              InkWell(
+                onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => CommonScaffold(
@@ -189,18 +189,19 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
                     ),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  minimumSize: const Size(56, 30),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-                child: Text(
-                  AppLocalizations.of(context).xboardSwitch,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  child: Text(
+                    '＞',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
                 ),
               ),
             ],
