@@ -49,6 +49,24 @@ class Preferences {
         false;
   }
 
+  Future<List<Group>> getGroupsCache() async {
+    final preferences = await sharedPreferencesCompleter.future;
+    final groupsString = preferences?.getString(groupsCacheKey);
+    if (groupsString == null) return [];
+    final List<dynamic> raw = json.decode(groupsString);
+    return raw.map((e) => Group.fromJson(e)).toList();
+  }
+
+  Future<bool> saveGroupsCache(List<Group> groups) async {
+    final preferences = await sharedPreferencesCompleter.future;
+    final data = groups.map((e) => e.toJson()).toList();
+    return await preferences?.setString(
+          groupsCacheKey,
+          json.encode(data),
+        ) ??
+        false;
+  }
+
   clearClashConfig() async {
     final preferences = await sharedPreferencesCompleter.future;
     preferences?.remove(clashConfigKey);

@@ -2,6 +2,7 @@ import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/common.dart';
 import 'package:fl_clash/providers/providers.dart';
+import 'package:fl_clash/state.dart';
 import 'package:fl_clash/views/proxies/common.dart' as proxies_common;
 import 'package:fl_clash/views/proxies/list.dart';
 import 'package:fl_clash/views/proxies/providers.dart';
@@ -63,25 +64,34 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
           },
           popup: CommonPopupMenu(
             items: [
-              PopupMenuItemData(
-                icon: Icons.tune,
-                label: appLocalizations.settings,
-                onPressed: () {
-                  showSheet(
-                    context: context,
-                    props: SheetProps(
-                      isScrollControlled: true,
-                    ),
-                    builder: (_, type) {
-                      return AdaptiveSheetScaffold(
-                        type: type,
-                        body: const ProxiesSetting(),
-                        title: appLocalizations.settings,
-                      );
-                    },
-                  );
-                },
-              ),
+              if (ref.read(currentGroupsStateProvider).value.isEmpty)
+                PopupMenuItemData(
+                  icon: Icons.sync,
+                  label: appLocalizations.sync,
+                  onPressed: () async {
+                    await globalState.appController.updateAllProvidersAndGroups();
+                  },
+                )
+              else
+                PopupMenuItemData(
+                  icon: Icons.tune,
+                  label: appLocalizations.settings,
+                  onPressed: () {
+                    showSheet(
+                      context: context,
+                      props: SheetProps(
+                        isScrollControlled: true,
+                      ),
+                      builder: (_, type) {
+                        return AdaptiveSheetScaffold(
+                          type: type,
+                          body: const ProxiesSetting(),
+                          title: appLocalizations.settings,
+                        );
+                      },
+                    );
+                  },
+                ),
               if (_hasProviders)
                 PopupMenuItemData(
                   icon: Icons.poll_outlined,
