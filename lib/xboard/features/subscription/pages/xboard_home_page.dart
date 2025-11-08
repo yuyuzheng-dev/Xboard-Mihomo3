@@ -81,34 +81,17 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
     final isDesktop = Platform.isLinux || Platform.isWindows || Platform.isMacOS;
     
     return Scaffold(
-      appBar: isDesktop ? null : AppBar(
-        automaticallyImplyLeading: false,
-        actions: [
-          TextButton.icon(
-            icon: const Icon(Icons.card_giftcard, size: 20),
-            label: Text(appLocalizations.xboardPlanInfo),
-            onPressed: () {
-              // 移动端独有的按钮，使用 push 创建路由栈
-              context.push('/plans');
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ],
-      ),
+      appBar: null, 
       body: Consumer(
         builder: (_, ref, __) {
           // 获取屏幕高度并计算自适应间距
           final screenHeight = MediaQuery.of(context).size.height;
-        final appBarHeight = kToolbarHeight;
-        final statusBarHeight = MediaQuery.of(context).padding.top;
-        final bottomNavHeight = 60.0; // 底部导航栏高度
-        final availableHeight = screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
-        
-        // 根据可用高度调整间距
+          final appBarHeight = 0.0;
+          final statusBarHeight = MediaQuery.of(context).padding.top;
+          final bottomNavHeight = 0.0; // 底部导航栏高度已隐藏
+          final availableHeight = screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
+          
+          // 根据可用高度调整间距
         double sectionSpacing;
         double verticalPadding;
         double horizontalPadding;

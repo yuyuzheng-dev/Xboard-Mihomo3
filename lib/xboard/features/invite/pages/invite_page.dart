@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:fl_clash/l10n/l10n.dart';
 import 'package:fl_clash/xboard/features/invite/providers/invite_provider.dart';
 import 'package:fl_clash/xboard/features/invite/widgets/error_card.dart';
 import 'package:fl_clash/xboard/features/invite/widgets/invite_rules_card.dart';
@@ -41,8 +44,24 @@ class _InvitePageState extends ConsumerState<InvitePage>
   Widget build(BuildContext context) {
     super.build(context);  // 必须调用，配合 AutomaticKeepAliveClientMixin
     
-    return Scaffold(
-      appBar: null,
+    // 根据操作系统平台判断设备类型
+    final isDesktop = Platform.isLinux || Platform.isWindows || Platform.isMacOS;
+    final appLocalizations = AppLocalizations.of(context);
+    
+    final scaffold = Scaffold(
+      appBar: isDesktop
+          ? null
+          : AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  if (!context.mounted) return;
+                  context.go('/');
+                },
+              ),
+              title: Text(appLocalizations.invite),
+              centerTitle: true,
+            ),
       body: Consumer(
         builder: (_, ref, __) {
           return RefreshIndicator(
@@ -75,5 +94,18 @@ class _InvitePageState extends ConsumerState<InvitePage>
         },
       ),
     );
+    
+    if (isDesktop) {
+      return scaffold;
+    } else {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          context.go('/');
+        },
+        child: scaffold,
+      );
+    }
   }
 }
