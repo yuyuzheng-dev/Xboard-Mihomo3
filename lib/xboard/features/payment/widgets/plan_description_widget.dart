@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 
 class PlanDescriptionWidget extends StatelessWidget {
   final String content;
@@ -19,17 +20,32 @@ class PlanDescriptionWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.outlineVariant),
       ),
-      child: MarkdownBody(
-        data: content,
-        styleSheet: MarkdownStyleSheet(
-          p: TextStyle(
-            color: colorScheme.onSurfaceVariant,
-            fontSize: 14,
-            height: 1.5,
+      child: (() {
+        final text = content.trim();
+        final htmlTagPattern = RegExp(r'<\s*\/?\s*\w+[^>]*>', multiLine: true);
+        final isHtml = htmlTagPattern.hasMatch(text);
+        if (isHtml) {
+          return HtmlWidget(
+            content,
+            textStyle: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          );
+        }
+        return MarkdownBody(
+          data: content,
+          styleSheet: MarkdownStyleSheet(
+            p: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 14,
+              height: 1.5,
+            ),
+            textAlign: WrapAlignment.center,
           ),
-          textAlign: WrapAlignment.center,
-        ),
-      ),
+        );
+      })(),
     );
   }
 }
