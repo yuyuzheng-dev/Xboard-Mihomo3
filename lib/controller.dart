@@ -375,14 +375,26 @@ class AppController {
 
   Future<void> updateGroups() async {
     try {
-      _ref.read(groupsProvider.notifier).value = await retry(
+      final groups = await retry(
         task: () async {
           return await clashCore.getProxiesGroups();
         },
         retryIf: (res) => res.isEmpty,
       );
+      if (groups.isNotEmpty) {
+        _ref.read(groupsProvider.notifier).value = groups;
+        // Cache groups for startup/fallback usage
+        // ignore: unawaited_futures
+        preferences.saveGroupsCache(groups);
+      } else {
+        // Fallback to cached groups when empty
+        final cached = await preferences.getGroupsCache();
+        _ref.read(groupsProvider.notifier).value = cached;
+      }
     } catch (_) {
-      _ref.read(groupsProvider.notifier).value = [];
+      // Network or other errors, fallback to cached groups
+      final cached = await preferences.getGroupsCache();
+      _ref.read(groupsProvider.notifier).value = cached;
     }
   }
 
@@ -392,6 +404,47 @@ class AppController {
         continue;
       }
       await updateProfile(profile);
+    }
+  }
+
+  Future<void> updateAllProvidersAndGroups() async {
+    final providers = _ref.read(providersProvider);
+    final providersNotifier = _ref.read(providersProvider.notifier);
+    final messages = <String>[];
+    // Update each provider sequentially to reflect progress
+    for (final provider in providers) {
+      try {
+        providersNotifier.setProvider(
+          provider.copyWith(isUpdating: true),
+        );
+        final message = await clashCore.updateExternalProvider(
+          providerName: provider.name,
+        );
+        if (message.isNotEmpty) {
+          messages.add("${provider.name}: $message \n");
+        }
+        providersNotifier.setProvider(
+          await clashCore.getExternalProvider(provider.name),
+        );
+      } catch (e) {
+        messages.add("${provider.name}: $e\n");
+      }
+    }
+    await updateGroups();
+    if (messages.isNotEmpty) {
+      final titleMedium = context.textTheme.titleMedium;
+      globalState.showMessage(
+        title: appLocalizations.tip,
+        message: TextSpan(
+          children: [
+            for (final m in messages)
+              TextSpan(
+                text: m,
+                style: titleMedium,
+              )
+          ],
+        ),
+      );
     }
   }
 
@@ -548,6 +601,13 @@ class AppController {
       commonPrint.log(details.stack.toString());
     };
     updateTray(true);
+    // Preload cached groups to avoid empty state before core initializes
+    try {
+      final cached = await preferences.getGroupsCache();
+      if (cached.isNotEmpty) {
+        _ref.read(groupsProvider.notifier).value = cached;
+      }
+    } catch (_) {}
     await _initCore();
     await _initStatus();
     autoLaunch?.updateStatus(
