@@ -22,6 +22,14 @@ class _InvitePageState extends ConsumerState<InvitePage>
     with AutomaticKeepAliveClientMixin {
   bool _hasInitialized = false;
   
+  void _handleBack(BuildContext context) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/');
+    }
+  }
+  
   @override
   bool get wantKeepAlive => true;  // 保持页面状态，防止重建
   
@@ -52,16 +60,16 @@ class _InvitePageState extends ConsumerState<InvitePage>
       appBar: isDesktop
           ? null
           : AppBar(
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  if (!context.mounted) return;
-                  context.go('/');
-                },
-              ),
-              title: Text(appLocalizations.invite),
-              centerTitle: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                if (!context.mounted) return;
+                _handleBack(context);
+              },
             ),
+            title: Text(appLocalizations.invite),
+            centerTitle: true,
+          ),
       body: Consumer(
         builder: (_, ref, __) {
           return RefreshIndicator(
@@ -102,7 +110,7 @@ class _InvitePageState extends ConsumerState<InvitePage>
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          context.go('/');
+          _handleBack(context);
         },
         child: scaffold,
       );
