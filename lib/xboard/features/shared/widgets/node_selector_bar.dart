@@ -197,7 +197,7 @@ class _NodeSelectorBarState extends ConsumerState<NodeSelectorBar> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '>',
+                    'Opt>',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
