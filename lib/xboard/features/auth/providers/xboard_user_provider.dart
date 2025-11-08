@@ -22,7 +22,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     return const UserAuthState();
   }
 
-  /// 核心改进：优先确定认证状态，然后异步恢复缓存
+  /// 启动快速认证：有token时先显示加载动画，刷新用户与套餐信息
   Future<bool> quickAuth() async {
     try {
       commonPrint.log('========== 快速认证开始 ==========');
@@ -44,21 +44,70 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         return false;
       }
 
-      // ===== 关键改进：只要有token，就立即标记为已认证 =====
-      commonPrint.log('✓ 发现token，立即标记为已认证（不阻塞缓存读取）');
+      // 有token：标记为已认证，但保持未初始化以显示加载动画
+      commonPrint.log('✓ 发现token，进入启动刷新流程并显示加载动画');
       state = state.copyWith(
         isAuthenticated: true,
-        isInitialized: true,
+        isInitialized: false,
       );
 
-      // 第二步：异步恢复缓存（不阻塞，不影响认证状态）
-      commonPrint.log('第二步：异步恢复缓存数据...');
-      _asyncRestoreCacheData();
+      // 并发从网络刷新用户信息与订阅信息（带超时保护）
+      UserInfoData? userInfo;
+      SubscriptionData? subscription;
+      try {
+        final userInfoFuture = XBoardSDK.getUserInfo()
+            .timeout(const Duration(seconds: 6), onTimeout: () => null)
+            .catchError((_) => null);
+        final subscriptionFuture = XBoardSDK.getSubscription()
+            .timeout(const Duration(seconds: 6), onTimeout: () => null)
+            .catchError((_) => null);
+
+        userInfo = await userInfoFuture;
+        subscription = await subscriptionFuture;
+      } catch (e) {
+        commonPrint.log('[启动刷新] 拉取用户/订阅信息异常: $e');
+      }
+
+      // 网络成功则更新缓存与Provider
+      if (userInfo != null) {
+        await _storageService.saveUserInfo(userInfo);
+        ref.read(userInfoProvider.notifier).state = userInfo;
+        ref.read(userInfoCacheTimestampProvider.notifier).state = 
+            DateTime.now().millisecondsSinceEpoch;
+      }
+      if (subscription != null) {
+        await _storageService.saveSubscriptionInfo(subscription);
+        ref.read(subscriptionInfoProvider.notifier).state = subscription;
+        ref.read(subscriptionCacheTimestampProvider.notifier).state = 
+            DateTime.now().millisecondsSinceEpoch;
+      }
+
+      // 自动导入订阅
+      final finalSubscription = subscription ?? state.subscriptionInfo;
+      if (finalSubscription?.subscribeUrl?.isNotEmpty == true) {
+        ref.read(profileImportProvider.notifier).importSubscription(
+          finalSubscription!.subscribeUrl!,
+          forceRefresh: true,
+        );
+      }
+
+      // 若网络均失败，则回退到本地缓存的异步恢复（不阻塞）
+      if (userInfo == null && subscription == null) {
+        commonPrint.log('[启动刷新] 网络失败，回退到本地缓存恢复');
+        _asyncRestoreCacheData();
+      }
+
+      // 结束加载，进入主界面
+      state = state.copyWith(
+        isInitialized: true,
+        userInfo: userInfo ?? state.userInfo,
+        subscriptionInfo: subscription ?? state.subscriptionInfo,
+      );
 
       // 后台验证token有效性
       _backgroundTokenValidation();
 
-      commonPrint.log('========== 快速认证完成，已进入主界面 ==========');
+      commonPrint.log('========== 启动刷新完成，已进入主界面 ==========');
       return true;
       
     } catch (e) {
