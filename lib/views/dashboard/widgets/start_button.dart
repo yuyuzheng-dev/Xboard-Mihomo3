@@ -1,7 +1,10 @@
+import 'dart:math' show max;
+
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
+import 'package:fl_clash/l10n/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -80,27 +83,40 @@ class _StartButtonState extends ConsumerState<StartButton>
     return Theme(
       data: Theme.of(context).copyWith(
         floatingActionButtonTheme: FloatingActionButtonThemeData(
-          sizeConstraints: BoxConstraints(
+          sizeConstraints: const BoxConstraints(
             minWidth: 56,
-            maxWidth: 200,
+            maxWidth: 240,
           ),
         ),
       ),
       child: AnimatedBuilder(
         animation: _controller.view,
         builder: (_, child) {
-          final textWidth = globalState.measure
+          final labelStyle = context.textTheme.titleMedium?.toSoftBold;
+          final timeWidth = globalState.measure
                   .computeTextSize(
                     Text(
-                      utils.getTimeDifference(
-                        DateTime.now(),
-                      ),
-                      style: context.textTheme.titleMedium?.toSoftBold,
+                      '99:59:59',
+                      style: labelStyle,
                     ),
                   )
                   .width +
               16;
+          final startLabel = AppLocalizations.of(context).xboardStartProxy;
+          final startWidth = globalState.measure
+                  .computeTextSize(
+                    Text(
+                      startLabel,
+                      style: labelStyle,
+                    ),
+                  )
+                  .width +
+              16;
+          final textWidth = max(timeWidth, startWidth);
           return FloatingActionButton(
+            backgroundColor:
+                isStart ? context.colorScheme.primary : Colors.red,
+            foregroundColor: Colors.white,
             clipBehavior: Clip.antiAlias,
             materialTapTargetSize: MaterialTapTargetSize.padded,
             heroTag: null,
@@ -117,10 +133,11 @@ class _StartButtonState extends ConsumerState<StartButton>
                   child: AnimatedIcon(
                     icon: AnimatedIcons.play_pause,
                     progress: _animation,
+                    color: Colors.white,
                   ),
                 ),
                 SizedBox(
-                  width: textWidth * _animation.value,
+                  width: textWidth,
                   child: child!,
                 )
               ],
@@ -130,14 +147,16 @@ class _StartButtonState extends ConsumerState<StartButton>
         child: Consumer(
           builder: (_, ref, __) {
             final runTime = ref.watch(runTimeProvider);
-            final text = utils.getTimeText(runTime);
+            final text = runTime == null
+                ? AppLocalizations.of(context).xboardStartProxy
+                : utils.getTimeText(runTime);
             return Text(
               text,
               maxLines: 1,
               overflow: TextOverflow.visible,
               style:
                   Theme.of(context).textTheme.titleMedium?.toSoftBold.copyWith(
-                        color: context.colorScheme.onPrimaryContainer,
+                        color: Colors.white,
                       ),
             );
           },

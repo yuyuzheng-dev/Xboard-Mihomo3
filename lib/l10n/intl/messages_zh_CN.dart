@@ -332,7 +332,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "interval": MessageLookupByLibrary.simpleMessage("间隔"),
     "intranetIP": MessageLookupByLibrary.simpleMessage("内网 IP"),
     "invalidTransferAmount": MessageLookupByLibrary.simpleMessage("请输入有效的划转金额"),
-    "invite": MessageLookupByLibrary.simpleMessage("邀请"),
+    "invite": MessageLookupByLibrary.simpleMessage("邀请好友"),
     "inviteCode": MessageLookupByLibrary.simpleMessage("邀请码"),
     "inviteCodeGenFailed": MessageLookupByLibrary.simpleMessage("邀请码生成失败"),
     "inviteCodeOptional": MessageLookupByLibrary.simpleMessage("邀请码（可选）"),

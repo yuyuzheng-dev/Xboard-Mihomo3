@@ -85,7 +85,7 @@ class _XBoardConnectButtonState extends ConsumerState<XBoardConnectButton>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // 暗黑模式使用浅色背景配黑色文字
     final startColor = isDark ? Colors.green.shade200 : Colors.green.shade600;
-    final stopColor = isDark ? Colors.blue.shade200 : colorScheme.primary;
+    final stopColor = isDark ? Colors.red.shade300 : Colors.red;
     
     return Theme(
       data: Theme.of(context).copyWith(
@@ -152,7 +152,7 @@ class _XBoardConnectButtonState extends ConsumerState<XBoardConnectButton>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // 暗黑模式使用浅色背景配黑色文字
     final startColor = isDark ? Colors.green.shade200 : Colors.green.shade600;
-    final stopColor = isDark ? Colors.blue.shade200 : colorScheme.primary;
+    final stopColor = isDark ? Colors.red.shade300 : Colors.red;
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
