@@ -152,16 +152,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          actions: [
-            const LanguageSelector(),
-            const SizedBox(width: 8),
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: GestureDetector(
-                onTap: () => showDomainStatusDialog(context),
-                child: const DomainStatusIndicator(),
-              ),
-            ),
+          actions: const [
+            LanguageSelector(),
+            SizedBox(width: 8),
+            SizedBox(width: 16),
           ],
         ),
         extendBodyBehindAppBar: true,

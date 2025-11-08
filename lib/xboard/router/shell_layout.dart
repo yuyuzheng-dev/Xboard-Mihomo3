@@ -90,9 +90,12 @@ class AdaptiveShellLayout extends ConsumerWidget {
       );
     } else {
       // 移动端：Scaffold + 底部导航栏
-      // 首页、Plans 和 Support 页面不显示底部导航栏
+      // 首页、Plans、Support、Invite 页面不显示底部导航栏
       final location = GoRouterState.of(context).uri.path;
-      final hideBottomNav = location == '/' || location.startsWith('/plans') || location.startsWith('/support');
+      final hideBottomNav = location == '/' ||
+          location.startsWith('/plans') ||
+          location.startsWith('/support') ||
+          location.startsWith('/invite');
       
       return Scaffold(
         body: child,
