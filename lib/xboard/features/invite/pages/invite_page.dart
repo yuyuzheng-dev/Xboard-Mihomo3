@@ -108,9 +108,10 @@ class _InvitePageState extends ConsumerState<InvitePage>
     } else {
       return PopScope(
         canPop: false,
+        // 禁用系统返回键与手势返回，仅允许左上角返回按钮
         onPopInvokedWithResult: (didPop, result) {
+          // 阻止系统返回，什么也不做
           if (didPop) return;
-          _handleBack(context);
         },
         child: scaffold,
       );
