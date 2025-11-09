@@ -141,13 +141,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
             curve: Curves.easeOutCubic,
             margin: EdgeInsets.zero,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
-            ),
+            decoration: const BoxDecoration(),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -182,12 +176,14 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                 const NodeSelectorBar(),
                 const SizedBox(height: 12),
 
+                // 流量统计移动到启动按钮上方
+                _buildQuickStats(context),
+                const SizedBox(height: 12),
+
                 // 连接开关
                 _buildConnectArea(context, connectColor, disconnectColor),
                 const SizedBox(height: 8),
-                _buildStatusText(context, isDark),
-                const SizedBox(height: 12),
-                _buildQuickStats(context),
+                _buildStatusText(context, isDark)
               ],
             ),
           ),
@@ -251,7 +247,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                 Icon(
                   Icons.campaign_rounded,
                   size: 14,
-                  color: Colors.red,
+                  color: Colors.black,
                 ),
                 if (hasNotices)
                   Positioned(
@@ -260,8 +256,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                     child: Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(
-                        color: scheme.secondary,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
                         shape: BoxShape.circle,
                       ),
                     ),
