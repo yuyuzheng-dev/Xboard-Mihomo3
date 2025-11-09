@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 import 'package:go_router/go_router.dart';
 
-// 融合的 XBoard 模块组件
 import 'package:fl_clash/xboard/features/shared/widgets/notice_banner.dart';
 import 'package:fl_clash/xboard/features/shared/widgets/xboard_outbound_mode.dart';
 import 'package:fl_clash/xboard/features/shared/widgets/node_selector_bar.dart';
@@ -25,63 +24,40 @@ class XBoardVpnPanel extends ConsumerStatefulWidget {
 
 class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     with TickerProviderStateMixin {
-  late AnimationController _toggleController; // play/pause 图标与主按钮补间
+  late AnimationController _toggleController;
   late Animation<double> _toggleAnimation;
-
-  late AnimationController _pulseController; // 连接时的脉冲动画
-  late AnimationController _pressScaleController; // 点击缩放反馈
-
+  late AnimationController _pulseController;
+  late AnimationController _pressScaleController;
   bool isStart = false;
 
   @override
   void initState() {
     super.initState();
     isStart = globalState.appState.runTime != null;
-
     _toggleController = AnimationController(
       vsync: this,
       value: isStart ? 1 : 0,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 250),
     );
     _toggleAnimation = CurvedAnimation(
       parent: _toggleController,
       curve: Curves.easeOutCubic,
       reverseCurve: Curves.easeInCubic,
     );
-
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1500),
     );
     if (isStart) {
       _pulseController.repeat();
     }
-
     _pressScaleController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 120),
+      duration: const Duration(milliseconds: 150),
       lowerBound: 0.0,
-      upperBound: 0.06,
+      upperBound: 0.08,
       value: 0.0,
     );
-
-    ref.listenManual(
-      runTimeProvider.select((state) => state != null),
-      (prev, next) {
-        if (next != isStart) {
-          isStart = next;
-          _updateControllers();
-        }
-      },
-      fireImmediately: true,
-    );
-
-    // 预取公告数据
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(noticeProvider.notifier).fetchNotices();
-      }
-    });
   }
 
   @override
@@ -124,11 +100,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
 
   @override
   Widget build(BuildContext context) {
-    // 始终显示面板：无论是否已经获取到订阅/节点信息
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
-
-    // 配色：使用主题色，保持极简现代风格
     final connectColor = scheme.primary;
     final disconnectColor = scheme.error;
 
@@ -136,18 +109,18 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 主卡片，融合 套餐信息 / 代理模式 / 代理选择 / 连接开关 / 速率与模式状态
+          // Main Panel - Simplified and streamlined UI
           AnimatedContainer(
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeOutCubic,
-            margin: EdgeInsets.zero,
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 顶部：左侧公告按钮，右侧菜单
+                // Header Section: Notifications and Menu
                 Row(
                   children: [
                     _buildNoticeIcon(context),
@@ -155,9 +128,9 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                     _buildMenuButton(context),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
 
-                // 套餐信息
+                // Subscription Info Card
                 Consumer(
                   builder: (context, ref, child) {
                     final userInfo = ref.watch(userInfoProvider);
@@ -170,21 +143,24 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                     );
                   },
                 ),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 12),
+                // VPN Mode Selector (Proxy Mode)
                 const XBoardOutboundMode(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+
+                // Node Selection (Directly beneath VPN Mode)
                 const NodeSelectorBar(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 流量统计移动到启动按钮上方
+                // Quick Stats (Updated positioning above the connection switch)
                 _buildQuickStats(context),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 连接开关
+                // Connection Toggle Button
                 _buildConnectArea(context, connectColor, disconnectColor),
                 const SizedBox(height: 8),
-                _buildStatusText(context, isDark)
+                _buildStatusText(context, isDark),
               ],
             ),
           ),
@@ -193,102 +169,51 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Icons.shield_rounded,
-          size: 20,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(width: 6),
-        Text(
-          AppLocalizations.of(context).xboardProxy, // 复用已有文案
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-      ],
-    );
-  }
-
+  // Simplified Notice Icon
   Widget _buildNoticeIcon(BuildContext context) {
     return Consumer(builder: (context, ref, _) {
       final noticeState = ref.watch(noticeProvider);
       final notices = noticeState.visibleNotices;
-      final hasNotices = notices.isNotEmpty;
-      final scheme = Theme.of(context).colorScheme;
       return Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
             if (notices.isEmpty) {
               ref.read(noticeProvider.notifier).fetchNotices();
-              return;
+            } else {
+              showDialog(
+                context: context,
+                builder: (context) => NoticeDetailDialog(
+                  notices: notices,
+                  initialIndex: 0,
+                ),
+              );
             }
-            showDialog(
-              context: context,
-              builder: (context) => NoticeDetailDialog(
-                notices: notices,
-                initialIndex: 0,
-              ),
-            );
           },
           borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.20),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: scheme.outline.withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  Icons.campaign_rounded,
-                  size: 16,
-                  color: scheme.primary,
-                ),
-                if (hasNotices)
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: scheme.error,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+          child: Icon(
+            Icons.campaign_rounded,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       );
     });
   }
 
+  // Menu Button for other options like plans, invite, and logout
   Widget _buildMenuButton(BuildContext context) {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.menu_rounded),
       onSelected: (value) async {
         switch (value) {
           case 'plans':
-            if (!context.mounted) return;
             context.push('/plans');
             break;
           case 'invite':
-            if (!context.mounted) return;
             context.go('/invite');
             break;
           case 'logout':
-            if (!context.mounted) return;
             showDialog(
               context: context,
               builder: (context) => const LogoutDialog(),
@@ -313,83 +238,70 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     );
   }
 
+  // Connection Toggle Area (Using a Circular Animated Button)
   Widget _buildConnectArea(
     BuildContext context,
     Color connectColor,
     Color disconnectColor,
   ) {
-    final baseSize = 116.0;
-
     return Center(
       child: GestureDetector(
-        onTapDown: (_) {
-          _pressScaleController.forward();
-        },
-        onTapCancel: () {
-          _pressScaleController.reverse();
-        },
-        onTapUp: (_) {
-          _pressScaleController.reverse();
-        },
         onTap: _handleToggle,
+        onTapDown: (_) => _pressScaleController.forward(),
+        onTapCancel: () => _pressScaleController.reverse(),
+        onTapUp: (_) => _pressScaleController.reverse(),
         child: AnimatedBuilder(
-          animation: Listenable.merge([
-            _toggleController,
-            _pulseController,
-            _pressScaleController,
-          ]),
+          animation: Listenable.merge([_toggleController, _pulseController]),
           builder: (context, child) {
-            final scale = 1 - _pressScaleController.value; // 点击微缩放
+            final scale = 1 - _pressScaleController.value;
             final activeColor = isStart ? connectColor : disconnectColor;
-
             return SizedBox(
-              width: baseSize * 2,
-              height: baseSize * 2,
+              width: 120,
+              height: 120,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // 脉冲波纹
-                  if (isStart) ...List.generate(3, (i) {
-                    final t = (_pulseController.value + i / 3) % 1.0;
-                    final ringSize = baseSize * (1 + t * 1.4);
-                    final opacity = (1 - t) * 0.30;
-                    return Container(
-                      width: ringSize,
-                      height: ringSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: activeColor.withValues(alpha: opacity),
-                            blurRadius: 22 * t + 4,
-                            spreadRadius: 1,
+                  if (isStart) ...[
+                    // Pulse animation effect
+                    ...List.generate(3, (i) {
+                      final t = (_pulseController.value + i / 3) % 1.0;
+                      final ringSize = 120 * (1 + t * 1.4);
+                      final opacity = (1 - t) * 0.3;
+                      return Container(
+                        width: ringSize,
+                        height: ringSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: activeColor.withOpacity(opacity),
+                              blurRadius: 22 * t + 4,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                          border: Border.all(
+                            color: activeColor.withOpacity(opacity),
+                            width: 1.0,
                           ),
-                        ],
-                        border: Border.all(
-                          color: activeColor.withValues(alpha: opacity),
-                          width: 1.0,
                         ),
-                      ),
-                    );
-                  }),
-
-                  // 主按钮
+                      );
+                    }),
+                  ],
+                  // Main toggle button
                   Transform.scale(
                     scale: scale,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
                           colors: [
-                            activeColor.withValues(alpha: 0.90),
-                            activeColor.withValues(alpha: 0.70),
+                            activeColor.withOpacity(0.9),
+                            activeColor.withOpacity(0.7),
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: activeColor.withValues(alpha: 0.35),
+                            color: activeColor.withOpacity(0.35),
                             blurRadius: 16,
                             spreadRadius: 1.5,
                             offset: const Offset(0, 6),
@@ -397,8 +309,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                         ],
                       ),
                       child: SizedBox(
-                        width: baseSize,
-                        height: baseSize,
+                        width: 60,
+                        height: 60,
                         child: Center(
                           child: AnimatedIcon(
                             icon: AnimatedIcons.play_pause,
@@ -419,18 +331,16 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     );
   }
 
+  // Status Text - VPN connection state and uptime
   Widget _buildStatusText(BuildContext context, bool isDark) {
     return Consumer(
       builder: (context, ref, _) {
         final runTime = ref.watch(runTimeProvider);
         final textTheme = Theme.of(context).textTheme;
-
         final statusText = isStart
             ? AppLocalizations.of(context).xboardStopProxy
             : AppLocalizations.of(context).xboardStartProxy;
-
         return Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
@@ -451,9 +361,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
               child: Text(
                 statusText,
                 key: ValueKey(isStart),
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             if (isStart) ...[
@@ -470,7 +378,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withValues(alpha: 0.7),
+                        .withOpacity(0.7),
                   ),
                 ),
               ),
@@ -481,85 +389,47 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     );
   }
 
+  // Quick Statistics (Uploaded / Downloaded data)
   Widget _buildQuickStats(BuildContext context) {
     return Consumer(
       builder: (context, ref, child) {
         final traffics = ref.watch(trafficsProvider).list;
         final last = traffics.isEmpty ? null : traffics.last;
-        final mode = ref.watch(patchClashConfigProvider.select((s) => s.mode));
-        final tunOn =
-            ref.watch(patchClashConfigProvider.select((s) => s.tun.enable));
-
-        final String up = last != null ? last.up.toString() : '0B';
-        final String down = last != null ? last.down.toString() : '0B';
-
-        final chipTextStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            );
-
-        Widget buildChip(IconData icon, String text) {
-          final scheme = Theme.of(context).colorScheme;
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: scheme.outline.withValues(alpha: 0.12),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: scheme.onSurface.withValues(alpha: 0.7),
-                ),
-                const SizedBox(width: 6),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: Text(
-                    text,
-                    key: ValueKey(text),
-                    style: chipTextStyle,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+        final up = last != null ? last.up.toString() : '0B';
+        final down = last != null ? last.down.toString() : '0B';
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  buildChip(Icons.file_upload_outlined, '↑ $up'),
-                  buildChip(Icons.file_download_outlined, '↓ $down'),
-                ],
-              ),
-            ),
-            buildChip(
-              mode == Mode.global ? Icons.public : Icons.rule,
-              mode == Mode.global
-                  ? AppLocalizations.of(context).global
-                  : AppLocalizations.of(context).rule,
-            ),
-            const SizedBox(width: 8),
-            buildChip(
-              Icons.stacked_line_chart,
-              tunOn
-                  ? AppLocalizations.of(context).xboardTunEnabled
-                  : 'TUN OFF',
-            ),
+            // Upload/Download statistics
+            _buildChip(Icons.file_upload_outlined, '↑ $up'),
+            _buildChip(Icons.file_download_outlined, '↓ $down'),
           ],
         );
       },
+    );
+  }
+
+  // Helper method to build chips
+  Widget _buildChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.12),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+          const SizedBox(width: 6),
+          Text(text, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
