@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/xboard/features/auth/providers/xboard_user_provider.dart';
@@ -14,7 +13,7 @@ import 'package:fl_clash/xboard/features/subscription/services/subscription_stat
 import 'package:fl_clash/xboard/features/auth/pages/login_page.dart';
 import 'package:fl_clash/xboard/features/invite/dialogs/logout_dialog.dart';
 import '../widgets/subscription_usage_card.dart';
-import '../widgets/xboard_connect_button.dart';
+import '../widgets/xboard_vpn_panel.dart';
 class XBoardHomePage extends ConsumerStatefulWidget {
   const XBoardHomePage({super.key});
   @override
@@ -75,10 +74,6 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);  // 必须调用，配合 AutomaticKeepAliveClientMixin
-    
-    final appLocalizations = AppLocalizations.of(context);
-    // 根据操作系统平台判断设备类型
-    final isDesktop = Platform.isLinux || Platform.isWindows || Platform.isMacOS;
     
     return Scaffold(
       appBar: null, 
@@ -189,9 +184,13 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const XBoardConnectButton(isFloating: false),
-            const SizedBox(height: 10),
-            ...List.generate(3, (index) => _buildTxtButton(context, index)).expand((w) => [w, const SizedBox(height: 10)]).toList()..removeLast(),
+            // 全新 VPN 加速器面板，包含更顺滑的交互与动画
+            const XBoardVpnPanel(),
+            const SizedBox(height: 12),
+            ...List.generate(3, (index) => _buildTxtButton(context, index))
+                .expand((w) => [w, const SizedBox(height: 10)])
+                .toList()
+              ..removeLast(),
           ],
         );
       },
@@ -324,6 +323,7 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
           });
         }
       } catch (e) {
+        debugPrint('XBoardHomePage wait groups error: $e');
       }
     });
   }
