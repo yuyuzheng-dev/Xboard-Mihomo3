@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 import 'package:go_router/go_router.dart';
 
+// Required imports
 import 'package:fl_clash/xboard/features/shared/widgets/notice_banner.dart';
 import 'package:fl_clash/xboard/features/shared/widgets/xboard_outbound_mode.dart';
 import 'package:fl_clash/xboard/features/shared/widgets/node_selector_bar.dart';
@@ -55,7 +56,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
       vsync: this,
       duration: const Duration(milliseconds: 150),
       lowerBound: 0.0,
-      upperBound: 0.08,
+      upperBound: 0.12,
       value: 0.0,
     );
   }
@@ -69,7 +70,9 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
   }
 
   void _handleToggle() {
-    isStart = !isStart;
+    setState(() {
+      isStart = !isStart;
+    });
     _updateControllers();
     debouncer.call(
       FunctionTag.updateStatus,
