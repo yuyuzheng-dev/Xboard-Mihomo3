@@ -6,6 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 
+// 融合的 XBoard 模块组件
+import 'package:fl_clash/xboard/features/shared/widgets/notice_banner.dart';
+import 'package:fl_clash/xboard/features/shared/widgets/xboard_outbound_mode.dart';
+import 'package:fl_clash/xboard/features/shared/widgets/node_selector_bar.dart';
+import 'package:fl_clash/xboard/features/subscription/widgets/subscription_usage_card.dart';
+import 'package:fl_clash/xboard/features/auth/providers/xboard_user_provider.dart';
+
 class XBoardVpnPanel extends ConsumerStatefulWidget {
   const XBoardVpnPanel({super.key});
 
@@ -107,11 +114,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(startButtonSelectorStateProvider);
-    if (!state.isInit || !state.hasProfile) {
-      return const SizedBox.shrink();
-    }
-
+    // 始终显示面板：无论是否已经获取到订阅/节点信息
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // 配色：暗色模式使用浅色前景，亮色使用更饱和的颜色
@@ -119,35 +122,64 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     final disconnectColor = isDark ? Colors.red.shade300 : Colors.red;
 
     return RepaintBoundary(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context)
-              .colorScheme
-              .surfaceContainerHighest
-              .withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: (isStart ? connectColor : disconnectColor).withValues(alpha: 0.25),
-            width: 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 顶部公告（由内部Provider控制显示/隐藏）
+          const NoticeBanner(),
+          const SizedBox(height: 8),
+
+          // 主卡片，融合 套餐信息 / 代理模式 / 代理选择 / 连接开关 / 速率与模式状态
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: (isStart ? connectColor : disconnectColor).withValues(alpha: 0.25),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 套餐信息
+                Consumer(
+                  builder: (context, ref, child) {
+                    final userInfo = ref.watch(userInfoProvider);
+                    final subscriptionInfo = ref.watch(subscriptionInfoProvider);
+                    final currentProfile = ref.watch(currentProfileProvider);
+                    return SubscriptionUsageCard(
+                      subscriptionInfo: subscriptionInfo,
+                      userInfo: userInfo,
+                      profileSubscriptionInfo: currentProfile?.subscriptionInfo,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+                const XBoardOutboundMode(),
+                const SizedBox(height: 12),
+                const NodeSelectorBar(),
+                const SizedBox(height: 12),
+
+                // 连接开关
+                _buildConnectArea(context, connectColor, disconnectColor),
+                const SizedBox(height: 8),
+                _buildStatusText(context, isDark),
+                const SizedBox(height: 12),
+                _buildQuickStats(context),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 12),
-            _buildConnectArea(context, connectColor, disconnectColor),
-            const SizedBox(height: 8),
-            _buildStatusText(context, isDark),
-            const SizedBox(height: 12),
-            _buildQuickStats(context),
-          ],
-        ),
+        ],
       ),
     );
   }

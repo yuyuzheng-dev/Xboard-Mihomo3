@@ -132,24 +132,10 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const NoticeBanner(),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                              child: _buildUsageSection(),
-                            ),
-                            SizedBox(height: sectionSpacing),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                              child: _buildProxyModeSection(),
-                            ),
-                            SizedBox(height: sectionSpacing),
-                            const NodeSelectorBar(),
-                            SizedBox(height: sectionSpacing),
                             Padding(
                               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                               child: _buildConnectionSection(),
                             ),
-                            // 添加弹性空间，确保内容不会太紧凑
                             if (availableHeight > 600) const Spacer(),
                           ],
                         ),
