@@ -4,14 +4,12 @@ import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/xboard/features/auth/providers/xboard_user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 
 import 'package:fl_clash/xboard/features/shared/shared.dart';
 import 'package:fl_clash/xboard/features/latency/services/auto_latency_service.dart';
 import 'package:fl_clash/xboard/features/subscription/services/subscription_status_checker.dart';
 import 'package:fl_clash/xboard/features/auth/pages/login_page.dart';
-import 'package:fl_clash/xboard/features/invite/dialogs/logout_dialog.dart';
 import '../widgets/subscription_usage_card.dart';
 import '../widgets/xboard_vpn_panel.dart';
 class XBoardHomePage extends ConsumerStatefulWidget {
@@ -167,92 +165,18 @@ class _XBoardHomePageState extends ConsumerState<XBoardHomePage>
   Widget _buildConnectionSection() {
     return Consumer(
       builder: (context, ref, child) {
-        return Column(
+        return const Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 全新 VPN 加速器面板，包含更顺滑的交互与动画
-            const XBoardVpnPanel(),
-            const SizedBox(height: 12),
-            ...List.generate(3, (index) => _buildTxtButton(context, index))
-                .expand((w) => [w, const SizedBox(height: 10)])
-                .toList()
-              ..removeLast(),
+            XBoardVpnPanel(),
           ],
         );
       },
     );
   }
-  Widget _buildTxtButton(BuildContext context, int index) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = index == 2 ? Colors.red : (isDark ? Colors.blue.shade200 : colorScheme.primary);
-    final appLocalizations = AppLocalizations.of(context);
 
-    // 根据索引设置按钮文本与功能
-    String label;
-    Future<void> Function()? onTap;
-    switch (index) {
-      case 0:
-        label = appLocalizations.xboardPlanInfo; // 购买订阅
-        onTap = () async {
-          if (!context.mounted) return;
-          context.push('/plans');
-        };
-        break;
-      case 1:
-        label = appLocalizations.invite; // 邀请好友
-        onTap = () async {
-          if (!context.mounted) return;
-          context.go('/invite');
-        };
-        break;
-      case 2:
-        label = appLocalizations.logout; // 退出登录
-        onTap = () async {
-          if (!context.mounted) return;
-          showDialog(
-            context: context,
-            builder: (context) => const LogoutDialog(),
-          );
-        };
-        break;
-      default:
-        label = 'txt';
-        onTap = () async {};
-    }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: index == 2 ? Colors.white : (isDark ? Colors.black : Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
   Widget _buildProxyModeSection() {
     return const XBoardOutboundMode();
   }
