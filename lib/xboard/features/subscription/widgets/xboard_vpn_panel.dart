@@ -126,10 +126,11 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
   Widget build(BuildContext context) {
     // 始终显示面板：无论是否已经获取到订阅/节点信息
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
 
-    // 配色：暗色模式使用浅色前景，亮色使用更饱和的颜色
-    final connectColor = isDark ? Colors.green.shade200 : Colors.green.shade600;
-    final disconnectColor = isDark ? Colors.red.shade300 : Colors.red;
+    // 配色：使用主题色，保持极简现代风格
+    final connectColor = scheme.primary;
+    final disconnectColor = scheme.error;
 
     return RepaintBoundary(
       child: Column(
@@ -234,20 +235,23 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
             );
           },
           borderRadius: BorderRadius.circular(8),
-          child: Container
-            (
-            padding: const EdgeInsets.all(4),
+          child: Container(
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(8),
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.20),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: scheme.outline.withValues(alpha: 0.12),
+                width: 1,
+              ),
             ),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 Icon(
                   Icons.campaign_rounded,
-                  size: 14,
-                  color: Colors.black,
+                  size: 16,
+                  color: scheme.primary,
                 ),
                 if (hasNotices)
                   Positioned(
@@ -256,8 +260,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                     child: Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
+                      decoration: BoxDecoration(
+                        color: scheme.error,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -348,7 +352,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                   if (isStart) ...List.generate(3, (i) {
                     final t = (_pulseController.value + i / 3) % 1.0;
                     final ringSize = baseSize * (1 + t * 1.4);
-                    final opacity = (1 - t) * 0.45;
+                    final opacity = (1 - t) * 0.30;
                     return Container(
                       width: ringSize,
                       height: ringSize,
@@ -357,13 +361,13 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                         boxShadow: [
                           BoxShadow(
                             color: activeColor.withValues(alpha: opacity),
-                            blurRadius: 24 * t + 6,
-                            spreadRadius: 2,
+                            blurRadius: 22 * t + 4,
+                            spreadRadius: 1,
                           ),
                         ],
                         border: Border.all(
                           color: activeColor.withValues(alpha: opacity),
-                          width: 1.2,
+                          width: 1.0,
                         ),
                       ),
                     );
@@ -379,15 +383,15 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            activeColor.withValues(alpha: 0.95),
-                            activeColor.withValues(alpha: 0.75),
+                            activeColor.withValues(alpha: 0.90),
+                            activeColor.withValues(alpha: 0.70),
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: activeColor.withValues(alpha: 0.45),
-                            blurRadius: 18,
-                            spreadRadius: 2,
+                            color: activeColor.withValues(alpha: 0.35),
+                            blurRadius: 16,
+                            spreadRadius: 1.5,
                             offset: const Offset(0, 6),
                           ),
                         ],
@@ -494,19 +498,25 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
             );
 
         Widget buildChip(IconData icon, String text) {
+          final scheme = Theme.of(context).colorScheme;
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .surfaceContainerHighest
-                  .withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(10),
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: scheme.outline.withValues(alpha: 0.12),
+                width: 1,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 14),
+                Icon(
+                  icon,
+                  size: 14,
+                  color: scheme.onSurface.withValues(alpha: 0.7),
+                ),
                 const SizedBox(width: 6),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
