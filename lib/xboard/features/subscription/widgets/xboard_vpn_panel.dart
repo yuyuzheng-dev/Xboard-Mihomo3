@@ -5,6 +5,7 @@ import 'package:fl_clash/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_clash/l10n/l10n.dart';
+import 'package:go_router/go_router.dart';
 
 // 融合的 XBoard 模块组件
 import 'package:fl_clash/xboard/features/shared/widgets/notice_banner.dart';
@@ -12,6 +13,8 @@ import 'package:fl_clash/xboard/features/shared/widgets/xboard_outbound_mode.dar
 import 'package:fl_clash/xboard/features/shared/widgets/node_selector_bar.dart';
 import 'package:fl_clash/xboard/features/subscription/widgets/subscription_usage_card.dart';
 import 'package:fl_clash/xboard/features/auth/providers/xboard_user_provider.dart';
+import 'package:fl_clash/xboard/features/notice/notice.dart';
+import 'package:fl_clash/xboard/features/invite/dialogs/logout_dialog.dart';
 
 class XBoardVpnPanel extends ConsumerStatefulWidget {
   const XBoardVpnPanel({super.key});
@@ -72,6 +75,13 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
       },
       fireImmediately: true,
     );
+
+    // 预取公告数据
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(noticeProvider.notifier).fetchNotices();
+      }
+    });
   }
 
   @override
@@ -125,10 +135,6 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 顶部公告（由内部Provider控制显示/隐藏）
-          const NoticeBanner(),
-          const SizedBox(height: 8),
-
           // 主卡片，融合 套餐信息 / 代理模式 / 代理选择 / 连接开关 / 速率与模式状态
           AnimatedContainer(
             duration: const Duration(milliseconds: 240),
@@ -141,15 +147,21 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                   .surfaceContainerHighest
                   .withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: (isStart ? connectColor : disconnectColor).withValues(alpha: 0.25),
-                width: 1,
-              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // 顶部：左侧公告按钮，右侧菜单
+                Row(
+                  children: [
+                    _buildNoticeIcon(context),
+                    const Spacer(),
+                    _buildMenuButton(context),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
                 // 套餐信息
                 Consumer(
                   builder: (context, ref, child) {
@@ -198,6 +210,104 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoticeIcon(BuildContext context) {
+    return Consumer(builder: (context, ref, _) {
+      final noticeState = ref.watch(noticeProvider);
+      final notices = noticeState.visibleNotices;
+      final hasNotices = notices.isNotEmpty;
+      final scheme = Theme.of(context).colorScheme;
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (notices.isEmpty) {
+              ref.read(noticeProvider.notifier).fetchNotices();
+              return;
+            }
+            showDialog(
+              context: context,
+              builder: (context) => NoticeDetailDialog(
+                notices: notices,
+                initialIndex: 0,
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container
+            (
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  Icons.campaign_rounded,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+                if (hasNotices)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: scheme.secondary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildMenuButton(BuildContext context) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.menu_rounded),
+      onSelected: (value) async {
+        switch (value) {
+          case 'plans':
+            if (!context.mounted) return;
+            context.push('/plans');
+            break;
+          case 'invite':
+            if (!context.mounted) return;
+            context.go('/invite');
+            break;
+          case 'logout':
+            if (!context.mounted) return;
+            showDialog(
+              context: context,
+              builder: (context) => const LogoutDialog(),
+            );
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'plans',
+          child: Text(AppLocalizations.of(context).xboardPlanInfo),
+        ),
+        PopupMenuItem(
+          value: 'invite',
+          child: Text(AppLocalizations.of(context).invite),
+        ),
+        PopupMenuItem(
+          value: 'logout',
+          child: Text(AppLocalizations.of(context).logout),
         ),
       ],
     );
