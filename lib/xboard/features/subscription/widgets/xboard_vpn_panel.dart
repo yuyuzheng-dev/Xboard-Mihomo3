@@ -139,7 +139,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
           AnimatedContainer(
             duration: const Duration(milliseconds: 240),
             curve: Curves.easeOutCubic,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
+            margin: EdgeInsets.zero,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context)
@@ -240,7 +240,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
           borderRadius: BorderRadius.circular(8),
           child: Container
             (
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(8),
@@ -250,8 +250,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
               children: [
                 Icon(
                   Icons.campaign_rounded,
-                  size: 18,
-                  color: scheme.primary,
+                  size: 14,
+                  color: Colors.red,
                 ),
                 if (hasNotices)
                   Positioned(
