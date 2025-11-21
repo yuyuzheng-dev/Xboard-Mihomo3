@@ -9,36 +9,109 @@ import 'package:go_router/go_router.dart';
 import '../services/subscription_status_service.dart';
 import 'package:fl_clash/l10n/l10n.dart';
 class SubscriptionUsageCard extends ConsumerWidget {
-  final SubscriptionData? subscriptionInfo;
-  final UserInfoData? userInfo;
-  final fl_models.SubscriptionInfo? profileSubscriptionInfo;
   const SubscriptionUsageCard({
     super.key,
-    this.subscriptionInfo,
-    this.userInfo,
-    this.profileSubscriptionInfo,
   });
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final userState = ref.watch(xboardUserProvider);
-    SubscriptionStatusResult? subscriptionStatus;
-    if (userState.isAuthenticated && subscriptionInfo != null) {
-      subscriptionStatus = subscriptionStatusService.checkSubscriptionStatus(
-        userState: userState,
-        profileSubscriptionInfo: profileSubscriptionInfo,
-      );
-    }
-    if (profileSubscriptionInfo == null && userInfo == null && subscriptionInfo == null) {
-      return _buildEmptyCard(theme, context);
-    }
-    if (subscriptionStatus != null && 
-        (subscriptionStatus.type == SubscriptionStatusType.expired || 
-         subscriptionStatus.type == SubscriptionStatusType.exhausted ||
-         subscriptionStatus.type == SubscriptionStatusType.noSubscription)) {
-      return _buildStatusCard(subscriptionStatus, theme, context);
-    }
-    return _buildUsageCard(theme, context);
+    final theme = Theme.of(context);
+
+    return userState.when(
+      data: (data) {
+        if (data.profileSubscriptionInfo == null &&
+            data.userInfo == null &&
+            data.subscriptionInfo == null) {
+          return _buildEmptyCard(theme, context);
+        }
+        final subscriptionStatus =
+            subscriptionStatusService.checkSubscriptionStatus(
+          userState: data.userState,
+          profileSubscriptionInfo: data.profileSubscriptionInfo,
+        );
+        if (subscriptionStatus != null &&
+            (subscriptionStatus.type == SubscriptionStatusType.expired ||
+                subscriptionStatus.type == SubscriptionStatusType.exhausted ||
+                subscriptionStatus.type ==
+                    SubscriptionStatusType.noSubscription)) {
+          return _buildStatusCard(subscriptionStatus, theme, context);
+        }
+        return _buildUsageCard(
+          theme,
+          context,
+          data.profileSubscriptionInfo,
+          data.subscriptionInfo,
+        );
+      },
+      loading: () => _buildLoadingCard(theme, context),
+      error: (error, stackTrace) =>
+          _buildErrorCard(theme, context, error, ref),
+    );
+  }
+
+  Widget _buildLoadingCard(ThemeData theme, BuildContext context) {
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.15,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(
+    ThemeData theme,
+    BuildContext context,
+    Object error,
+    WidgetRef ref,
+  ) {
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 40,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${AppLocalizations.of(context).xboardDataLoadFailed}: $error',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
+              },
+              icon: const Icon(Icons.refresh),
+              label: Text(AppLocalizations.of(context).xboardRetry),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
   Widget _buildEmptyCard(ThemeData theme, BuildContext context) {
     return RepaintBoundary(
@@ -161,23 +234,16 @@ class SubscriptionUsageCard extends ConsumerWidget {
                 builder: (context, ref, child) {
                   final userState = ref.watch(xboardUserProvider);
                   return IconButton(
-                    onPressed: userState.isLoading ? null : () async {
-                      await ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
+                    onPressed: () async {
+                      await ref
+                          .read(xboardUserProvider.notifier)
+                          .refreshSubscriptionInfo();
                     },
-                    icon: userState.isLoading
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: statusColor,
-                          ),
-                        )
-                      : Icon(
-                          Icons.refresh,
-                          color: statusColor,
-                          size: 20,
-                        ),
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: statusColor,
+                      size: 20,
+                    ),
                     tooltip: '刷新订阅信息',
                     style: IconButton.styleFrom(
                       padding: EdgeInsets.zero,
@@ -259,7 +325,8 @@ class SubscriptionUsageCard extends ConsumerWidget {
     final isDesktop = Platform.isLinux || Platform.isWindows || Platform.isMacOS;
     
     // 尝试获取用户当前订阅的套餐ID
-    final userState = ref.read(xboardUserProvider);
+    final userState = ref.read(xboardUserProvider.notifier).state.value;
+    if (userState == null) return;
     final currentPlanId = userState.subscriptionInfo?.planId;
     
     if (currentPlanId != null) {
@@ -294,11 +361,17 @@ class SubscriptionUsageCard extends ConsumerWidget {
       context.push('/plans');
     }
   }
-  Widget _buildUsageCard(ThemeData theme, BuildContext context) {
-    final progress = _getProgressValue();
-    final usedTraffic = _getUsedTraffic();
-    final totalTraffic = _getTotalTraffic();
-    final remainingDays = _calculateRemainingDays();
+  Widget _buildUsageCard(
+    ThemeData theme,
+    BuildContext context,
+    fl_models.SubscriptionInfo? profileSubscriptionInfo,
+    SubscriptionData? subscriptionInfo,
+  ) {
+    final progress = _getProgressValue(profileSubscriptionInfo);
+    final usedTraffic = _getUsedTraffic(profileSubscriptionInfo);
+    final totalTraffic = _getTotalTraffic(profileSubscriptionInfo);
+    final remainingDays =
+        _calculateRemainingDays(profileSubscriptionInfo, subscriptionInfo);
     return RepaintBoundary(
       child: Container(
         decoration: BoxDecoration(
@@ -331,23 +404,16 @@ class SubscriptionUsageCard extends ConsumerWidget {
                 builder: (context, ref, child) {
                   final userState = ref.watch(xboardUserProvider);
                   return IconButton(
-                    onPressed: userState.isLoading ? null : () async {
-                      await ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
+                    onPressed: () async {
+                      await ref
+                          .read(xboardUserProvider.notifier)
+                          .refreshSubscriptionInfo();
                     },
-                    icon: userState.isLoading
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: theme.colorScheme.primary,
-                          ),
-                        )
-                      : Icon(
-                          Icons.refresh,
-                          color: theme.colorScheme.primary,
-                          size: 20,
-                        ),
+                    icon: Icon(
+                      Icons.refresh,
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
                     tooltip: '刷新订阅信息',
                     style: IconButton.styleFrom(
                       padding: EdgeInsets.zero,
