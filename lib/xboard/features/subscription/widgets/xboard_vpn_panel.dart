@@ -100,7 +100,6 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
                 const SizedBox(height: 16),
 
                 // Quick Stats (Updated positioning above the connection switch)
-                _buildQuickStats(context),
                 const SizedBox(height: 16),
 
                 // Connection Toggle Button
@@ -119,6 +118,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
     return Consumer(builder: (context, ref, _) {
       final noticeState = ref.watch(noticeProvider);
       final notices = noticeState.visibleNotices;
+      final hasNotices = notices.isNotEmpty;
+
       return Material(
         color: Colors.transparent,
         child: InkWell(
@@ -126,24 +127,57 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
             if (notices.isEmpty) {
               ref.read(noticeProvider.notifier).fetchNotices();
             } else {
-              showDialog(
-                context: context,
-                builder: (context) => NoticeDetailDialog(
-                  notices: notices,
-                  initialIndex: 0,
-                ),
-              );
+              _showNoticesBottomSheet(context, notices);
             }
           },
           borderRadius: BorderRadius.circular(8),
-          child: Icon(
-            Icons.campaign_rounded,
-            size: 20,
-            color: Theme.of(context).colorScheme.primary,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                Icons.campaign_rounded,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              if (hasNotices)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       );
     });
+  }
+
+  void _showNoticesBottomSheet(BuildContext context, List<dynamic> notices) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.4,
+          minChildSize: 0.3,
+          maxChildSize: 0.6,
+          builder: (context, scrollController) {
+            return NoticeDetailDialog(
+              notices: notices,
+              initialIndex: 0,
+            );
+          },
+        );
+      },
+    );
   }
 
   // Menu Button for other options like plans, invite, and logout
@@ -214,7 +248,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
     Color disconnectColor,
   ) {
     return SizedBox(
-      width: 150,
+      width: double.infinity,
       height: 48,
       child: FilledButton.icon(
         onPressed: _handleToggle,
@@ -238,47 +272,4 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
     );
   }
 
-  // Quick Statistics (Uploaded / Downloaded data)
-  Widget _buildQuickStats(BuildContext context) {
-    return Consumer(
-      builder: (context, ref, child) {
-        final traffics = ref.watch(trafficsProvider).list;
-        final last = traffics.isEmpty ? null : traffics.last;
-        final up = last != null ? last.up.toString() : '0B';
-        final down = last != null ? last.down.toString() : '0B';
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Upload/Download statistics
-            _buildChip(Icons.file_upload_outlined, '↑ $up'),
-            _buildChip(Icons.file_download_outlined, '↓ $down'),
-          ],
-        );
-      },
-    );
-  }
-
-  // Helper method to build chips
-  Widget _buildChip(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(46),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withAlpha(30),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withAlpha(178)),
-          const SizedBox(width: 6),
-          Text(text, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
 }
