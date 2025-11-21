@@ -91,10 +91,13 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         );
       }
 
-      // 若网络均失败，则回退到本地缓存的异步恢复（不阻塞）
+      // 若网络均失败，则优先尝试同步恢复本地缓存，避免首页出现空数据闪烁
       if (userInfo == null && subscription == null) {
-        commonPrint.log('[启动刷新] 网络失败，回退到本地缓存恢复');
-        _asyncRestoreCacheData();
+        commonPrint.log('[启动刷新] 网络失败，尝试同步从本地缓存恢复核心数据');
+        await _restoreCacheDataInternal();
+        // 同步恢复后使用最新的缓存数据继续后续流程
+        userInfo = state.userInfo;
+        subscription = state.subscriptionInfo;
       }
 
       // 结束加载，进入主界面
@@ -121,80 +124,85 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
   void _asyncRestoreCacheData() {
     // 在后台异步恢复，不阻塞主线程
     Future.microtask(() async {
-      try {
-        commonPrint.log('[缓存恢复] 开始读取本地数据...');
-        
-        String? email = state.email; // 保持上一个值
-        UserInfoData? userInfo = state.userInfo;
-        SubscriptionData? subscription = state.subscriptionInfo;
-
-        // 并发读取所有缓存（不相互阻塞）
-        try {
-          final emailResult = await _storageService.getUserEmail()
-              .timeout(const Duration(seconds: 2));
-          final newEmail = emailResult.dataOrNull;
-          if (newEmail != null) {
-            email = newEmail;
-            commonPrint.log('[缓存恢复] ✓ email读取成功');
-          }
-        } catch (e) {
-          commonPrint.log('[缓存恢复] email读取失败（保持缓存）: $e');
-        }
-
-        try {
-          final userInfoResult = await _storageService.getUserInfo()
-              .timeout(const Duration(seconds: 2));
-          final newUserInfo = userInfoResult.dataOrNull;
-          if (newUserInfo != null) {
-            userInfo = newUserInfo;
-            ref.read(userInfoProvider.notifier).state = newUserInfo;
-            ref.read(userInfoCacheTimestampProvider.notifier).state = 
-                DateTime.now().millisecondsSinceEpoch;
-            commonPrint.log('[缓存恢复] ✓ userInfo读取成功');
-          }
-        } catch (e) {
-          commonPrint.log('[缓存恢复] userInfo读取失败（保持缓存）: $e');
-        }
-
-        try {
-          final subscriptionResult = await _storageService.getSubscriptionInfo()
-              .timeout(const Duration(seconds: 2));
-          final newSubscription = subscriptionResult.dataOrNull;
-          if (newSubscription != null) {
-            subscription = newSubscription;
-            ref.read(subscriptionInfoProvider.notifier).state = newSubscription;
-            ref.read(subscriptionCacheTimestampProvider.notifier).state = 
-                DateTime.now().millisecondsSinceEpoch;
-            commonPrint.log('[缓存恢复] ✓ subscription读取成功');
-          }
-        } catch (e) {
-          commonPrint.log('[缓存恢复] subscription读取失败（保持缓存）: $e');
-        }
-
-        // 只有当有新数据时才更新state
-        if (email != state.email || 
-            userInfo != state.userInfo || 
-            subscription != state.subscriptionInfo) {
-          state = state.copyWith(
-            email: email,
-            userInfo: userInfo,
-            subscriptionInfo: subscription,
-          );
-          commonPrint.log('[缓存恢复] ✓ 状态已更新');
-        }
-
-        // 自动导入订阅
-        if (subscription?.subscribeUrl?.isNotEmpty == true) {
-          commonPrint.log('[缓存恢复] 自动导入订阅: ${subscription!.subscribeUrl}');
-          ref.read(profileImportProvider.notifier).importSubscription(subscription.subscribeUrl!);
-        }
-
-        commonPrint.log('[缓存恢复] 完成 - email: $email, 有userInfo: ${userInfo != null}, 有subscription: ${subscription != null}');
-      } catch (e) {
-        commonPrint.log('[缓存恢复] 严重异常（但已认证）: $e');
-        // 即使严重异常也不改变认证状态
-      }
+      await _restoreCacheDataInternal();
     });
+  }
+
+  /// 实际的缓存恢复逻辑
+  Future<void> _restoreCacheDataInternal() async {
+    try {
+      commonPrint.log('[缓存恢复] 开始读取本地数据...');
+      
+      String? email = state.email; // 保持上一个值
+      UserInfoData? userInfo = state.userInfo;
+      SubscriptionData? subscription = state.subscriptionInfo;
+
+      // 并发读取所有缓存（不相互阻塞）
+      try {
+        final emailResult = await _storageService.getUserEmail()
+            .timeout(const Duration(seconds: 2));
+        final newEmail = emailResult.dataOrNull;
+        if (newEmail != null) {
+          email = newEmail;
+          commonPrint.log('[缓存恢复] ✓ email读取成功');
+        }
+      } catch (e) {
+        commonPrint.log('[缓存恢复] email读取失败（保持缓存）: $e');
+      }
+
+      try {
+        final userInfoResult = await _storageService.getUserInfo()
+            .timeout(const Duration(seconds: 2));
+        final newUserInfo = userInfoResult.dataOrNull;
+        if (newUserInfo != null) {
+          userInfo = newUserInfo;
+          ref.read(userInfoProvider.notifier).state = newUserInfo;
+          ref.read(userInfoCacheTimestampProvider.notifier).state = 
+              DateTime.now().millisecondsSinceEpoch;
+          commonPrint.log('[缓存恢复] ✓ userInfo读取成功');
+        }
+      } catch (e) {
+        commonPrint.log('[缓存恢复] userInfo读取失败（保持缓存）: $e');
+      }
+
+      try {
+        final subscriptionResult = await _storageService.getSubscriptionInfo()
+            .timeout(const Duration(seconds: 2));
+        final newSubscription = subscriptionResult.dataOrNull;
+        if (newSubscription != null) {
+          subscription = newSubscription;
+          ref.read(subscriptionInfoProvider.notifier).state = newSubscription;
+          ref.read(subscriptionCacheTimestampProvider.notifier).state = 
+              DateTime.now().millisecondsSinceEpoch;
+          commonPrint.log('[缓存恢复] ✓ subscription读取成功');
+        }
+      } catch (e) {
+        commonPrint.log('[缓存恢复] subscription读取失败（保持缓存）: $e');
+      }
+
+      // 只有当有新数据时才更新state
+      if (email != state.email || 
+          userInfo != state.userInfo || 
+          subscription != state.subscriptionInfo) {
+        state = state.copyWith(
+          email: email,
+          userInfo: userInfo,
+          subscriptionInfo: subscription,
+        );
+        commonPrint.log('[缓存恢复] ✓ 状态已更新');
+      }
+
+      // 自动导入订阅
+      if (subscription?.subscribeUrl?.isNotEmpty == true) {
+        commonPrint.log('[缓存恢复] 自动导入订阅: ${subscription!.subscribeUrl}');
+        ref.read(profileImportProvider.notifier).importSubscription(subscription.subscribeUrl!);
+      }
+
+      commonPrint.log('[缓存恢复] 完成 - email: $email, 有userInfo: ${userInfo != null}, 有subscription: ${subscription != null}');
+    } catch (e) {
+      commonPrint.log('[缓存恢复] 严重异常（但已认证）: $e');
+      // 即使严重异常也不改变认证状态
+    }
   }
 
   /// 后台仅验证token是否过期

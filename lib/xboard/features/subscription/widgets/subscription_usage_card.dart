@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:fl_clash/xboard/features/auth/providers/xboard_user_provider.dart';
+import 'package:fl_clash/xboard/features/auth/models/auth_state.dart';
 import 'package:fl_clash/xboard/features/subscription/providers/xboard_subscription_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +23,40 @@ class SubscriptionUsageCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final userState = ref.watch(xboardUserProvider);
+
+    // 当前是否已经有任何订阅/用户相关数据
+    final hasSubscriptionData = profileSubscriptionInfo != null ||
+        userInfo != null ||
+        subscriptionInfo != null;
+
+    // 过滤掉 TOKEN_EXPIRED，这类错误由专门的对话框与路由处理
+    final rawError = userState.errorMessage;
+    final hasGenericError = rawError != null && rawError != 'TOKEN_EXPIRED';
+
+    // 当还没有任何数据时，使用 AsyncValue 统一处理 加载 / 错误 / 空状态
+    if (!hasSubscriptionData) {
+      final AsyncValue<void> loadState;
+      if (userState.isLoading) {
+        loadState = const AsyncValue.loading();
+      } else if (hasGenericError) {
+        loadState = AsyncValue.error(rawError!, StackTrace.current);
+      } else {
+        loadState = const AsyncValue.data(null);
+      }
+
+      return loadState.when(
+        loading: () => _buildLoadingCard(theme, context),
+        error: (error, _) => _buildErrorCard(
+          theme,
+          context,
+          error.toString(),
+          ref,
+        ),
+        data: (_) => _buildEmptyCard(theme, context),
+      );
+    }
+
+    // 已有数据时，根据订阅状态展示不同卡片，同时在卡片内部附加错误提示
     SubscriptionStatusResult? subscriptionStatus;
     if (userState.isAuthenticated && subscriptionInfo != null) {
       subscriptionStatus = subscriptionStatusService.checkSubscriptionStatus(
@@ -29,16 +64,31 @@ class SubscriptionUsageCard extends ConsumerWidget {
         profileSubscriptionInfo: profileSubscriptionInfo,
       );
     }
-    if (profileSubscriptionInfo == null && userInfo == null && subscriptionInfo == null) {
-      return _buildEmptyCard(theme, context);
+
+    final inlineErrorMessage =
+        !userState.isLoading && hasGenericError ? rawError : null;
+
+    if (subscriptionStatus != null &&
+        (subscriptionStatus.type == SubscriptionStatusType.expired ||
+            subscriptionStatus.type == SubscriptionStatusType.exhausted ||
+            subscriptionStatus.type == SubscriptionStatusType.noSubscription)) {
+      return _buildStatusCard(
+        subscriptionStatus,
+        theme,
+        context,
+        userState,
+        ref,
+        inlineErrorMessage,
+      );
     }
-    if (subscriptionStatus != null && 
-        (subscriptionStatus.type == SubscriptionStatusType.expired || 
-         subscriptionStatus.type == SubscriptionStatusType.exhausted ||
-         subscriptionStatus.type == SubscriptionStatusType.noSubscription)) {
-      return _buildStatusCard(subscriptionStatus, theme, context);
-    }
-    return _buildUsageCard(theme, context);
+
+    return _buildUsageCard(
+      theme,
+      context,
+      userState,
+      ref,
+      inlineErrorMessage,
+    );
   }
   Widget _buildEmptyCard(ThemeData theme, BuildContext context) {
     return RepaintBoundary(
@@ -74,7 +124,218 @@ class SubscriptionUsageCard extends ConsumerWidget {
     ),
   );
   }
-  Widget _buildStatusCard(SubscriptionStatusResult statusResult, ThemeData theme, BuildContext context) {
+
+  Widget _buildLoadingCard(ThemeData theme, BuildContext context) {
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 12,
+                        width: 180,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(
+    ThemeData theme,
+    BuildContext context,
+    String errorMessage,
+    WidgetRef ref,
+  ) {
+    final localization = AppLocalizations.of(context);
+    return RepaintBoundary(
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: theme.colorScheme.error,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        localization.xboardLoadingFailed,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        errorMessage,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () async {
+                  await ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: Text(localization.xboardRetry),
+                ),
+                ),
+                ],
+                ),
+                ),
+                );
+                }
+
+                Widget _buildInlineErrorBanner(
+                ThemeData theme,
+                BuildContext context,
+                WidgetRef ref,
+                String errorMessage,
+                ) {
+                final localization = AppLocalizations.of(context);
+                return Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Icon(
+                Icons.info_outline,
+                size: 18,
+                color: theme.colorScheme.onErrorContainer,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Text(
+                  localization.xboardLoadingFailed,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  errorMessage,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer.withValues(alpha: 0.9),
+                  ),
+                ),
+                ],
+                ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                onPressed: () async {
+                await ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
+                },
+                style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.onErrorContainer,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(localization.xboardRetry),
+                ),
+                ],
+                ),
+                );
+                }
+
+                Widget _buildStatusCard(SubscriptionStatusResult statusResult, ThemeData theme, BuildContext context, UserAuthState userState, WidgetRef ref, String? inlineErrorMessage) {
     IconData statusIcon;
     Color statusColor;
     String statusText;
@@ -157,35 +418,34 @@ class SubscriptionUsageCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              Consumer(
-                builder: (context, ref, child) {
-                  final userState = ref.watch(xboardUserProvider);
-                  return IconButton(
-                    onPressed: userState.isLoading ? null : () async {
-                      await ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
-                    },
-                    icon: userState.isLoading
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: statusColor,
-                          ),
-                        )
-                      : Icon(
-                          Icons.refresh,
+              IconButton(
+                onPressed: userState.isLoading
+                    ? null
+                    : () async {
+                        await ref
+                            .read(xboardUserProvider.notifier)
+                            .refreshSubscriptionInfo();
+                      },
+                icon: userState.isLoading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
                           color: statusColor,
-                          size: 20,
                         ),
-                    tooltip: '刷新订阅信息',
-                    style: IconButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(20, 20),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  );
-                },
+                      )
+                    : Icon(
+                        Icons.refresh,
+                        color: statusColor,
+                        size: 20,
+                      ),
+                tooltip: AppLocalizations.of(context).xboardRefresh,
+                style: IconButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(20, 20),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ],
           ),
@@ -217,25 +477,25 @@ class SubscriptionUsageCard extends ConsumerWidget {
           ],
           // 续费按钮
           const SizedBox(height: 12),
-          Consumer(
-            builder: (context, ref, child) {
-              return SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () async {
-                    await _handleRenewAction(context, ref);
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: statusColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  icon: const Icon(Icons.shopping_bag, size: 18),
-                  label: Text(_getRenewButtonText(statusResult.type, context)),
-                ),
-              );
-            },
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () async {
+                await _handleRenewAction(context, ref);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: statusColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.shopping_bag, size: 18),
+              label: Text(_getRenewButtonText(statusResult.type, context)),
+            ),
           ),
+          if (inlineErrorMessage != null && inlineErrorMessage.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildInlineErrorBanner(theme, context, ref, inlineErrorMessage),
+          ],
         ],
       ),
       ),
@@ -294,7 +554,14 @@ class SubscriptionUsageCard extends ConsumerWidget {
       context.push('/plans');
     }
   }
-  Widget _buildUsageCard(ThemeData theme, BuildContext context) {
+
+  Widget _buildUsageCard(
+    ThemeData theme,
+    BuildContext context,
+    UserAuthState userState,
+    WidgetRef ref,
+    String? inlineErrorMessage,
+  ) {
     final progress = _getProgressValue();
     final usedTraffic = _getUsedTraffic();
     final totalTraffic = _getTotalTraffic();
@@ -313,28 +580,29 @@ class SubscriptionUsageCard extends ConsumerWidget {
             ],
           ),
         ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '${(progress * 100).toInt()}% ${AppLocalizations.of(context).xboardUsed}',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  '${(progress * 100).toInt()}% ${AppLocalizations.of(context).xboardUsed}',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Consumer(
-                builder: (context, ref, child) {
-                  final userState = ref.watch(xboardUserProvider);
-                  return IconButton(
-                    onPressed: userState.isLoading ? null : () async {
-                      await ref.read(xboardUserProvider.notifier).refreshSubscriptionInfo();
-                    },
-                    icon: userState.isLoading
+                const Spacer(),
+                IconButton(
+                  onPressed: userState.isLoading
+                      ? null
+                      : () async {
+                          await ref
+                              .read(xboardUserProvider.notifier)
+                              .refreshSubscriptionInfo();
+                        },
+                  icon: userState.isLoading
                       ? SizedBox(
                           width: 18,
                           height: 18,
@@ -348,69 +616,83 @@ class SubscriptionUsageCard extends ConsumerWidget {
                           color: theme.colorScheme.primary,
                           size: 20,
                         ),
-                    tooltip: '刷新订阅信息',
-                    style: IconButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(20, 20),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  );
-                },
+                  tooltip: AppLocalizations.of(context).xboardRefresh,
+                  style: IconButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(20, 20),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
+              ),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  _getProgressColor(progress, theme),
+                ),
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildStatItem(
+                    icon: Icons.cloud_download,
+                    label:
+                        AppLocalizations.of(context).xboardUsedTraffic,
+                    value: _formatBytes(usedTraffic),
+                    subtitle: '/ ${_formatBytes(totalTraffic)}',
+                    theme: theme,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 36,
+                  color: theme.colorScheme.outline
+                      .withValues(alpha: 0.15),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                Expanded(
+                  child: _buildStatItem(
+                    icon: Icons.schedule,
+                    label: AppLocalizations.of(context)
+                        .xboardValidityPeriod,
+                    value: '$remainingDays',
+                    subtitle: AppLocalizations.of(context).xboardDays,
+                    theme: theme,
+                  ),
+                ),
+              ],
+            ),
+            if (inlineErrorMessage != null &&
+                inlineErrorMessage.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _buildInlineErrorBanner(
+                theme,
+                context,
+                ref,
+                inlineErrorMessage,
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            height: 6,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(3),
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            ),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _getProgressColor(progress, theme),
-              ),
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildStatItem(
-                  icon: Icons.cloud_download,
-                  label: AppLocalizations.of(context).xboardUsedTraffic,
-                  value: _formatBytes(usedTraffic),
-                  subtitle: '/ ${_formatBytes(totalTraffic)}',
-                  theme: theme,
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 36,
-                color: theme.colorScheme.outline.withValues(alpha: 0.15),
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  icon: Icons.schedule,
-                  label: AppLocalizations.of(context).xboardValidityPeriod,
-                  value: '$remainingDays',
-                  subtitle: AppLocalizations.of(context).xboardDays,
-                  theme: theme,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
+
   Widget _buildStatItem({
     required IconData icon,
     required String label,

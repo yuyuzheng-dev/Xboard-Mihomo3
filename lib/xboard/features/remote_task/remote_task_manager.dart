@@ -14,6 +14,12 @@ class RemoteTaskManager {
   final String _wsUrl;
   late final StatusReportingService _statusReportingService;
   late final RemoteTaskService _remoteTaskService;
+
+  /// 当服务端通过 WebSocket 推送订阅刷新事件时触发的回调
+  ///
+  /// 由应用层（如 ApplicationState）在启动后进行注册，用于触发
+  /// xboardUserProvider.notifier.refreshSubscriptionInfo() 等逻辑。
+  static Future<void> Function()? onSubscriptionRefreshRequested;
   
   RemoteTaskManager._internal(this._wsUrl) {
     // For demonstration, a hardcoded token. In a real app, get this securely.
@@ -80,6 +86,19 @@ class RemoteTaskManager {
             return;
           case 'identify_ack':
             _logger.info('身份验证成功: ${data['message']}');
+            return;
+          case 'subscription_refresh':
+            _logger.info('收到服务端订阅刷新事件，准备刷新本地订阅信息');
+            final callback = RemoteTaskManager.onSubscriptionRefreshRequested;
+            if (callback != null) {
+              try {
+                await callback();
+              } catch (e) {
+                _logger.error('处理订阅刷新推送事件时出错', e);
+              }
+            } else {
+              _logger.warning('订阅刷新回调未注册，忽略本次订阅刷新推送');
+            }
             return;
           default:
             _logger.warning('收到未知系统事件: $event');

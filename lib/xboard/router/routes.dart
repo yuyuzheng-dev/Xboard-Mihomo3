@@ -6,6 +6,7 @@ import 'package:fl_clash/xboard/features/payment/pages/payment_gateway_page.dart
 import 'package:fl_clash/xboard/features/online_support/pages/online_support_page.dart';
 import 'package:fl_clash/xboard/features/invite/pages/invite_page.dart';
 import 'package:fl_clash/xboard/features/auth/pages/login_page.dart';
+import 'package:fl_clash/xboard/features/auth/pages/loading_page.dart';
 import 'package:fl_clash/xboard/sdk/xboard_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -122,16 +123,12 @@ final List<RouteBase> routes = [
       ),
     ),
     
-    // 加载页面
+    // 加载页面（全局启动 Splash）
     GoRoute(
       path: '/loading',
       name: 'loading',
       pageBuilder: (context, state) => const MaterialPage(
-        child: Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
+        child: XBoardLoadingPage(),
       ),
     ),
 ];
