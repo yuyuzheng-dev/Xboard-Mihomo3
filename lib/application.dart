@@ -21,6 +21,7 @@ import 'package:fl_clash/xboard/sdk/xboard_sdk.dart';
 import 'package:fl_clash/xboard/features/online_support/providers/websocket_auto_connector.dart';
 import 'package:fl_clash/xboard/router/app_router.dart' as xboard_router;
 import 'package:fl_clash/xboard/features/auth/auth.dart';
+import 'package:fl_clash/xboard/features/remote_task/remote_task_manager.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({
@@ -57,6 +58,17 @@ class ApplicationState extends ConsumerState<Application> {
     _autoUpdateGroupTask();
     _autoUpdateProfilesTask();
     globalState.appController = AppController(context, ref);
+
+    // 注册远程任务推送回调，用于在订阅变更时主动刷新本地订阅/用量信息
+    RemoteTaskManager.onSubscriptionRefreshRequested = () async {
+      try {
+        final notifier = ref.read(xboardUserProvider.notifier);
+        await notifier.refreshSubscriptionInfo();
+      } catch (e) {
+        debugPrint('[Application] 处理订阅刷新推送时出错: $e');
+      }
+    };
+
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
       final currentContext = globalState.navigatorKey.currentContext;
       if (currentContext != null) {
@@ -324,6 +336,9 @@ class ApplicationState extends ConsumerState<Application> {
       linkManager.destroy();
       _autoUpdateGroupTaskTimer?.cancel();
       _autoUpdateProfilesTaskTimer?.cancel();
+
+      // 清理远程任务推送回调，防止内存泄漏
+      RemoteTaskManager.onSubscriptionRefreshRequested = null;
       
       // 释放XBoard SDK资源
       try {
