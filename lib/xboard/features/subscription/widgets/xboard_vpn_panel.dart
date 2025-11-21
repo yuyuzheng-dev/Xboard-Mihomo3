@@ -23,57 +23,19 @@ class XBoardVpnPanel extends ConsumerStatefulWidget {
   ConsumerState<XBoardVpnPanel> createState() => _XBoardVpnPanelState();
 }
 
-class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
-    with TickerProviderStateMixin {
-  late AnimationController _toggleController;
-  late Animation<double> _toggleAnimation;
-  late AnimationController _pulseController;
-  late AnimationController _pressScaleController;
+class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
   bool isStart = false;
 
   @override
   void initState() {
     super.initState();
     isStart = globalState.appState.runTime != null;
-    _toggleController = AnimationController(
-      vsync: this,
-      value: isStart ? 1 : 0,
-      duration: const Duration(milliseconds: 250),
-    );
-    _toggleAnimation = CurvedAnimation(
-      parent: _toggleController,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
-    );
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    if (isStart) {
-      _pulseController.repeat();
-    }
-    _pressScaleController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-      lowerBound: 0.0,
-      upperBound: 0.12,
-      value: 0.0,
-    );
-  }
-
-  @override
-  void dispose() {
-    _toggleController.dispose();
-    _pulseController.dispose();
-    _pressScaleController.dispose();
-    super.dispose();
   }
 
   void _handleToggle() {
     setState(() {
       isStart = !isStart;
     });
-    _updateControllers();
     debouncer.call(
       FunctionTag.updateStatus,
       () {
@@ -83,27 +45,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     );
   }
 
-  void _updateControllers() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (isStart) {
-        _toggleController.forward();
-        if (!_pulseController.isAnimating) {
-          _pulseController.repeat();
-        }
-      } else {
-        _toggleController.reverse();
-        if (_pulseController.isAnimating) {
-          _pulseController.stop();
-          _pulseController.reset();
-        }
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final scheme = Theme.of(context).colorScheme;
     final connectColor = scheme.primary;
     final disconnectColor = scheme.error;
@@ -161,9 +104,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
                 const SizedBox(height: 16),
 
                 // Connection Toggle Button
-                _buildConnectArea(context, connectColor, disconnectColor),
+                _buildConnectButton(context, connectColor, disconnectColor),
                 const SizedBox(height: 8),
-                _buildStatusText(context, isDark),
               ],
             ),
           ),
@@ -206,189 +148,93 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
 
   // Menu Button for other options like plans, invite, and logout
   Widget _buildMenuButton(BuildContext context) {
-    return PopupMenuButton<String>(
+    return IconButton(
       icon: const Icon(Icons.menu_rounded),
-      onSelected: (value) async {
-        switch (value) {
-          case 'plans':
-            context.push('/plans');
-            break;
-          case 'invite':
-            context.go('/invite');
-            break;
-          case 'logout':
-            showDialog(
-              context: context,
-              builder: (context) => const LogoutDialog(),
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (context) {
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.4,
+              minChildSize: 0.3,
+              maxChildSize: 0.6,
+              builder: (context, scrollController) {
+                return SingleChildScrollView(
+                  controller: scrollController,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.description_outlined),
+                          title: Text(AppLocalizations.of(context).xboardPlanInfo),
+                          onTap: () {
+                            context.push('/plans');
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.person_add_alt_1_outlined),
+                          title: Text(AppLocalizations.of(context).invite),
+                          onTap: () {
+                            context.push('/invite');
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.logout),
+                          title: Text(AppLocalizations.of(context).logout),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            showDialog(
+                              context: context,
+                              builder: (context) => const LogoutDialog(),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             );
-            break;
-        }
+          },
+        );
       },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'plans',
-          child: Text(AppLocalizations.of(context).xboardPlanInfo),
-        ),
-        PopupMenuItem(
-          value: 'invite',
-          child: Text(AppLocalizations.of(context).invite),
-        ),
-        PopupMenuItem(
-          value: 'logout',
-          child: Text(AppLocalizations.of(context).logout),
-        ),
-      ],
     );
   }
 
-  // Connection Toggle Area (Using a Circular Animated Button)
-  Widget _buildConnectArea(
+  // Connection Toggle Area (Using a simpler button)
+  Widget _buildConnectButton(
     BuildContext context,
     Color connectColor,
     Color disconnectColor,
   ) {
-    return Center(
-      child: GestureDetector(
-        onTap: _handleToggle,
-        onTapDown: (_) => _pressScaleController.forward(),
-        onTapCancel: () => _pressScaleController.reverse(),
-        onTapUp: (_) => _pressScaleController.reverse(),
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_toggleController, _pulseController]),
-          builder: (context, child) {
-            final scale = 1 - _pressScaleController.value;
-            final activeColor = isStart ? connectColor : disconnectColor;
-            return SizedBox(
-              width: 120,
-              height: 120,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (isStart) ...[
-                    // Pulse animation effect
-                    ...List.generate(3, (i) {
-                      final t = (_pulseController.value + i / 3) % 1.0;
-                      final ringSize = 120 * (1 + t * 1.4);
-                      final opacity = (1 - t) * 0.3;
-                      return Container(
-                        width: ringSize,
-                        height: ringSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: activeColor.withOpacity(opacity),
-                              blurRadius: 22 * t + 4,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                          border: Border.all(
-                            color: activeColor.withOpacity(opacity),
-                            width: 1.0,
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                  // Main toggle button
-                  Transform.scale(
-                    scale: scale,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            activeColor.withOpacity(0.9),
-                            activeColor.withOpacity(0.7),
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: activeColor.withOpacity(0.35),
-                            blurRadius: 16,
-                            spreadRadius: 1.5,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: SizedBox(
-                        width: 60,
-                        height: 60,
-                        child: Center(
-                          child: AnimatedIcon(
-                            icon: AnimatedIcons.play_pause,
-                            progress: _toggleAnimation,
-                            color: Colors.white,
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+    return SizedBox(
+      width: 150,
+      height: 48,
+      child: FilledButton.icon(
+        onPressed: _handleToggle,
+        icon: Icon(isStart ? Icons.stop_rounded : Icons.play_arrow_rounded),
+        label: Text(
+          isStart
+              ? AppLocalizations.of(context).xboardStopProxy
+              : AppLocalizations.of(context).xboardStartProxy,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: isStart ? disconnectColor : connectColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
         ),
       ),
-    );
-  }
-
-  // Status Text - VPN connection state and uptime
-  Widget _buildStatusText(BuildContext context, bool isDark) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final runTime = ref.watch(runTimeProvider);
-        final textTheme = Theme.of(context).textTheme;
-        final statusText = isStart
-            ? AppLocalizations.of(context).xboardStopProxy
-            : AppLocalizations.of(context).xboardStartProxy;
-        return Column(
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.25),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                );
-              },
-              child: Text(
-                statusText,
-                key: ValueKey(isStart),
-                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ),
-            if (isStart) ...[
-              const SizedBox(height: 4),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  AppLocalizations.of(context).xboardRunningTime(
-                    utils.getTimeText(runTime),
-                  ),
-                  key: ValueKey(runTime),
-                  style: textTheme.bodySmall?.copyWith(
-                    fontSize: 12,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.7),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        );
-      },
     );
   }
 
@@ -418,17 +264,17 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.18),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(46),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.12),
+          color: Theme.of(context).colorScheme.outline.withAlpha(30),
           width: 1,
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withAlpha(178)),
           const SizedBox(width: 6),
           Text(text, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
         ],

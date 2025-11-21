@@ -245,6 +245,11 @@ class XBoardConfigAccessor {
     return _onlineSupportService?.getWebSocketBaseUrl();
   }
 
+  /// 获取面板类型
+  String? getPanelType() {
+    return _currentConfig?.metadata.version;
+  }
+
   /// 获取第一个订阅URL
   String? getFirstSubscriptionUrl() {
     return _currentConfig?.firstSubscriptionUrl;
