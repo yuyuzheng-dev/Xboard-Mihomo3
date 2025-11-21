@@ -1,0 +1,85 @@
+name: build-android-universal
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  IS_STABLE: ${{ !contains(github.ref, '-') }}
+
+jobs:
+  android_universal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Android Signing
+        run: |
+          echo "${{ secrets.KEYSTORE }}" | base64 --decode > android/app/keystore.jks
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/local.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/local.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/local.properties
+
+      - name: Get Flutter Dependencies
+        run: flutter pub get
+
+      # TODO: 这里目录要改成你实际的 SDK 路径
+      - name: Generate SDK Code
+        run: |
+          cd lib/sdk/flutter_xboard_sdk   # 如果你改成 lib/sdk，记得同步改这里
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          cd ../../..
+
+      - name: Generate Main Project Code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # 关键：仍然让 setup.dart 先把环境 + native 处理好
+      - name: Build via setup.dart (prepare)
+        run: |
+          dart setup.dart android ${{ env.IS_STABLE == 'true' && '--env stable' || '' }}
+
+      # 再打 universal APK（如果 setup.dart 里已经打包，这步可以删掉）
+      - name: Build Android universal-release (all ABIs)
+        run: |
+          flutter build apk --release --target-platform=android-arm,android-arm64,android-x64
+
+          echo "== Flutter APK outputs =="
+          ls -l build/app/outputs/flutter-apk || true
+
+          mkdir -p dist
+          if [ -f build/app/outputs/flutter-apk/app-release-unsigned.apk ]; then
+            cp -v build/app/outputs/flutter-apk/app-release-unsigned.apk dist/app-universal-release.apk
+          else
+            cp -v build/app/outputs/flutter-apk/app-release.apk dist/app-universal-release.apk
+          fi
+
+          echo "== Dist contents =="
+          ls -l dist || true
+
+      - name: Upload Android universal Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-universal-release
+          path: dist/app-universal-release.apk
+          overwrite: true
