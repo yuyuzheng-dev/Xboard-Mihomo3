@@ -1,3 +1,4 @@
+import 'package:fl_clash/xboard/sdk/xboard_sdk.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/providers/providers.dart';
@@ -8,13 +9,14 @@ import 'package:fl_clash/l10n/l10n.dart';
 import 'package:go_router/go_router.dart';
 
 // Required imports
-import 'package:fl_clash/xboard/features/shared/widgets/notice_banner.dart';
 import 'package:fl_clash/xboard/features/shared/widgets/xboard_outbound_mode.dart';
 import 'package:fl_clash/xboard/features/shared/widgets/node_selector_bar.dart';
 import 'package:fl_clash/xboard/features/subscription/widgets/subscription_usage_card.dart';
 import 'package:fl_clash/xboard/features/auth/providers/xboard_user_provider.dart';
 import 'package:fl_clash/xboard/features/notice/notice.dart';
 import 'package:fl_clash/xboard/features/invite/dialogs/logout_dialog.dart';
+
+import 'notice_detail_sheet.dart';
 
 class XBoardVpnPanel extends ConsumerStatefulWidget {
   const XBoardVpnPanel({super.key});
@@ -99,10 +101,6 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
                 const NodeSelectorBar(),
                 const SizedBox(height: 16),
 
-                // Quick Stats (Updated positioning above the connection switch)
-                _buildQuickStats(context),
-                const SizedBox(height: 16),
-
                 // Connection Toggle Button
                 _buildConnectButton(context, connectColor, disconnectColor),
                 const SizedBox(height: 8),
@@ -119,31 +117,44 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
     return Consumer(builder: (context, ref, _) {
       final noticeState = ref.watch(noticeProvider);
       final notices = noticeState.visibleNotices;
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
-            } else {
-              showDialog(
-                context: context,
-                builder: (context) => NoticeDetailDialog(
-                  notices: notices,
-                  initialIndex: 0,
-                ),
-              );
-            }
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Icon(
+      if (notices.isEmpty) {
+        return const SizedBox(
+          width: 48,
+        );
+      }
+      return IconButton(
+        icon: Badge(
+          isLabelVisible: notices.isNotEmpty,
+          child: const Icon(
             Icons.campaign_rounded,
-            size: 20,
-            color: Theme.of(context).colorScheme.primary,
           ),
         ),
+        onPressed: () {
+          _showNoticeBottomSheet(context, notices);
+        },
       );
     });
+  }
+
+  void _showNoticeBottomSheet(BuildContext context, List<NoticeData> notices) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          builder: (context, scrollController) {
+            return NoticeDetailSheet(
+              notices: notices,
+              scrollController: scrollController,
+            );
+          },
+        );
+      },
+    );
   }
 
   // Menu Button for other options like plans, invite, and logout
@@ -170,7 +181,8 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
                       children: [
                         ListTile(
                           leading: const Icon(Icons.description_outlined),
-                          title: Text(AppLocalizations.of(context).xboardPlanInfo),
+                          title:
+                              Text(AppLocalizations.of(context).xboardPlanInfo),
                           onTap: () {
                             context.push('/plans');
                             Navigator.of(context).pop();
@@ -214,7 +226,6 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
     Color disconnectColor,
   ) {
     return SizedBox(
-      width: 150,
       height: 48,
       child: FilledButton.icon(
         onPressed: _handleToggle,
@@ -234,50 +245,6 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
             borderRadius: BorderRadius.circular(24),
           ),
         ),
-      ),
-    );
-  }
-
-  // Quick Statistics (Uploaded / Downloaded data)
-  Widget _buildQuickStats(BuildContext context) {
-    return Consumer(
-      builder: (context, ref, child) {
-        final traffics = ref.watch(trafficsProvider).list;
-        final last = traffics.isEmpty ? null : traffics.last;
-        final up = last != null ? last.up.toString() : '0B';
-        final down = last != null ? last.down.toString() : '0B';
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Upload/Download statistics
-            _buildChip(Icons.file_upload_outlined, '↑ $up'),
-            _buildChip(Icons.file_download_outlined, '↓ $down'),
-          ],
-        );
-      },
-    );
-  }
-
-  // Helper method to build chips
-  Widget _buildChip(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withAlpha(46),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withAlpha(30),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurface.withAlpha(178)),
-          const SizedBox(width: 6),
-          Text(text, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
-        ],
       ),
     );
   }
