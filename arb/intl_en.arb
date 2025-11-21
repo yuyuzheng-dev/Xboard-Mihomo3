@@ -1064,5 +1064,6 @@
   "contactSupport": "Support",
   "configurationError": "Application configuration error, please contact support",
   "onlineSupportWebSocketConfigNotFound": "Online support WebSocket configuration not found, please check configuration",
-  "newMessageFromSupport": "New message from support"
-}
+  "newMessageFromSupport": "New message from support",
+  "xboardNoNotice": "No notice"
+  }

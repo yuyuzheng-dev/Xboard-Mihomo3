@@ -54,6 +54,7 @@ class UserAuthState {
   final String? errorMessage;
   final UserInfoData? userInfo;
   final SubscriptionData? subscriptionInfo;
+  final bool hasInitializationError;
 
   const UserAuthState({
     this.isAuthenticated = false,
@@ -63,6 +64,7 @@ class UserAuthState {
     this.errorMessage,
     this.userInfo,
     this.subscriptionInfo,
+    this.hasInitializationError = false,
   });
 
   UserAuthState copyWith({
@@ -73,6 +75,7 @@ class UserAuthState {
     String? errorMessage,
     UserInfoData? userInfo,
     SubscriptionData? subscriptionInfo,
+    bool? hasInitializationError,
   }) {
     return UserAuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
@@ -82,6 +85,7 @@ class UserAuthState {
       errorMessage: errorMessage ?? this.errorMessage,
       userInfo: userInfo ?? this.userInfo,
       subscriptionInfo: subscriptionInfo ?? this.subscriptionInfo,
+      hasInitializationError: hasInitializationError ?? this.hasInitializationError,
     );
   }
 
@@ -99,7 +103,8 @@ class UserAuthState {
         other.isLoading == isLoading &&
         other.errorMessage == errorMessage &&
         other.userInfo == userInfo &&
-        other.subscriptionInfo == subscriptionInfo;
+        other.subscriptionInfo == subscriptionInfo &&
+        other.hasInitializationError == hasInitializationError;
   }
 
   @override
@@ -110,7 +115,8 @@ class UserAuthState {
         isLoading.hashCode ^
         errorMessage.hashCode ^
         userInfo.hashCode ^
-        subscriptionInfo.hashCode;
+        subscriptionInfo.hashCode ^
+        hasInitializationError.hashCode;
   }
 }
 

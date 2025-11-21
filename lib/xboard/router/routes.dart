@@ -7,6 +7,7 @@ import 'package:fl_clash/xboard/features/online_support/pages/online_support_pag
 import 'package:fl_clash/xboard/features/invite/pages/invite_page.dart';
 import 'package:fl_clash/xboard/features/auth/pages/login_page.dart';
 import 'package:fl_clash/xboard/features/auth/pages/loading_page.dart';
+import 'package:fl_clash/xboard/features/auth/pages/offline_error_page.dart';
 import 'package:fl_clash/xboard/sdk/xboard_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -129,6 +130,19 @@ final List<RouteBase> routes = [
       name: 'loading',
       pageBuilder: (context, state) => const MaterialPage(
         child: XBoardLoadingPage(),
+      ),
+    ),
+    
+    // 离线错误页面
+    GoRoute(
+      path: '/offline-error',
+      name: 'offline_error',
+      pageBuilder: (context, state) => MaterialPage(
+        child: OfflineErrorPage(
+          onRetry: () {
+            context.go('/');
+          },
+        ),
       ),
     ),
 ];

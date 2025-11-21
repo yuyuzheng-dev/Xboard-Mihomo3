@@ -308,15 +308,22 @@ class ApplicationState extends ConsumerState<Application> {
       redirect: (context, state) {
         final isAuthenticated = userState.isAuthenticated;
         final isInitialized = userState.isInitialized;
+        final hasInitializationError = userState.hasInitializationError;
         final isLoginPage = state.uri.path == '/login';
+        final isOfflineErrorPage = state.uri.path == '/offline-error';
 
         // 初始化中，显示加载页面
         if (!isInitialized) {
           return '/loading';
         }
 
+        // 初始化失败（离线或网络错误），显示离线错误页面
+        if (hasInitializationError && !isAuthenticated && !isOfflineErrorPage) {
+          return '/offline-error';
+        }
+
         // 未认证且不在登录页，跳转到登录页
-        if (!isAuthenticated && !isLoginPage) {
+        if (!isAuthenticated && !isLoginPage && !isOfflineErrorPage) {
           return '/login';
         }
 

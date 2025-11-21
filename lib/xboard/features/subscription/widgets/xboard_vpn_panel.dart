@@ -123,11 +123,27 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
-            } else {
-              _showNoticesBottomSheet(context, notices);
+          onTap: () async {
+            // 总是重新请求公告数据，确保获取最新的公告
+            ref.read(noticeProvider.notifier).fetchNotices();
+            
+            // 延迟显示底部弹窗，等待数据加载完成
+            await Future.delayed(const Duration(milliseconds: 500));
+            
+            if (mounted) {
+              final updatedNotices = ref.read(noticeProvider).visibleNotices;
+              if (updatedNotices.isEmpty) {
+                // 如果没有公告，显示提示
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context).xboardNoNotice),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } else {
+                // 显示公告详情
+                _showNoticesBottomSheet(context, updatedNotices);
+              }
             }
           },
           borderRadius: BorderRadius.circular(8),

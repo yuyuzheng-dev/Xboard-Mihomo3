@@ -802,5 +802,6 @@
   },
   "contactSupport": "サポートに連絡",
   "configurationError": "アプリケーション設定エラー、サポートにお問い合わせください",
-  "onlineSupportWebSocketConfigNotFound": "オンラインサポートWebSocket設定が見つかりません。設定を確認してください"
-}
+  "onlineSupportWebSocketConfigNotFound": "オンラインサポートWebSocket設定が見つかりません。設定を確認してください",
+  "xboardNoNotice": "通知なし"
+  }

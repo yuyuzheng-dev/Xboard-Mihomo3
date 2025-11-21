@@ -802,5 +802,6 @@
   },
   "contactSupport": "Связаться с поддержкой",
   "configurationError": "Ошибка конфигурации приложения, обратитесь в службу поддержки",
-  "onlineSupportWebSocketConfigNotFound": "Конфигурация WebSocket онлайн поддержки не найдена, проверьте настройки"
-}
+  "onlineSupportWebSocketConfigNotFound": "Конфигурация WebSocket онлайн поддержки не найдена, проверьте настройки",
+  "xboardNoNotice": "Нет объявлений"
+  }

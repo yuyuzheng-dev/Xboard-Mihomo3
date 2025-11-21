@@ -29,18 +29,35 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       
       // 第一步：检查token（同步，关键决策点）
       commonPrint.log('第一步：检查token状态...');
-      final hasToken = await XBoardSDK.isLoggedIn().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          commonPrint.log('检查token超时，假设无token');
-          return false;
-        },
-      );
+      bool hasTokenCheckFailed = false;
+      bool hasToken = false;
+      
+      try {
+        hasToken = await XBoardSDK.isLoggedIn().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            commonPrint.log('检查token超时，假设无token');
+            return false;
+          },
+        );
+      } catch (e) {
+        commonPrint.log('检查token异常: $e');
+        hasTokenCheckFailed = true;
+        // 如果检查失败且有缓存数据，尝试使用缓存
+        final email = await _storageService.getUserEmail().catchError((_) => null);
+        if (email?.dataOrNull != null) {
+          commonPrint.log('检查token失败但发现缓存数据，尝试离线模式');
+          hasToken = true;
+        }
+      }
 
       // 如果无token，直接返回未认证
       if (!hasToken) {
         commonPrint.log('✗ 无token，标记未认证');
-        state = state.copyWith(isInitialized: true);
+        state = state.copyWith(
+          isInitialized: true,
+          hasInitializationError: hasTokenCheckFailed,
+        );
         return false;
       }
 
@@ -49,11 +66,14 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       state = state.copyWith(
         isAuthenticated: true,
         isInitialized: false,
+        hasInitializationError: false,
       );
 
       // 并发从网络刷新用户信息与订阅信息（带超时保护）
       UserInfoData? userInfo;
       SubscriptionData? subscription;
+      bool networkFetchFailed = false;
+      
       try {
         final userInfoFuture = XBoardSDK.getUserInfo()
             .timeout(const Duration(seconds: 6), onTimeout: () => null)
@@ -66,6 +86,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         subscription = await subscriptionFuture;
       } catch (e) {
         commonPrint.log('[启动刷新] 拉取用户/订阅信息异常: $e');
+        networkFetchFailed = true;
       }
 
       // 网络成功则更新缓存与Provider
@@ -105,6 +126,7 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
         isInitialized: true,
         userInfo: userInfo ?? state.userInfo,
         subscriptionInfo: subscription ?? state.subscriptionInfo,
+        hasInitializationError: networkFetchFailed && userInfo == null && subscription == null && state.userInfo == null,
       );
 
       // 后台验证token有效性
@@ -115,7 +137,10 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
       
     } catch (e) {
       commonPrint.log('快速认证异常: $e');
-      state = state.copyWith(isInitialized: true);
+      state = state.copyWith(
+        isInitialized: true,
+        hasInitializationError: true,
+      );
       return false;
     }
   }

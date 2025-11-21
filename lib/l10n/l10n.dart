@@ -7003,6 +7003,16 @@ class AppLocalizations {
       args: [],
     );
   }
+
+  /// `No notice`
+  String get xboardNoNotice {
+    return Intl.message(
+      'No notice',
+      name: 'xboardNoNotice',
+      desc: '',
+      args: [],
+    );
+  }
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalizations> {

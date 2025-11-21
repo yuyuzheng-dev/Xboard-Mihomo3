@@ -1032,5 +1032,6 @@
   "contactSupport": "联系客服",
   "configurationError": "应用配置异常，请联系客服",
   "onlineSupportWebSocketConfigNotFound": "在线客服WebSocket配置未找到，请检查配置",
-  "newMessageFromSupport": "客服新消息"
-}
+  "newMessageFromSupport": "客服新消息",
+  "xboardNoNotice": "暂无公告"
+  }
