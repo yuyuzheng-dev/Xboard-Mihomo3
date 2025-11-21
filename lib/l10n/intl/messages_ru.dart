@@ -1181,6 +1181,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "xboardNoInternetConnection": MessageLookupByLibrary.simpleMessage(
       "Нет интернет-соединения, проверьте настройки сети",
     ),
+    "xboardNoNotice": MessageLookupByLibrary.simpleMessage("Нет уведомлений"),
     "xboardNoSubscriptionInfo": MessageLookupByLibrary.simpleMessage(
       "Нет информации о подписке",
     ),

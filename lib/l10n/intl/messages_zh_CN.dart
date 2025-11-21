@@ -332,7 +332,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "interval": MessageLookupByLibrary.simpleMessage("间隔"),
     "intranetIP": MessageLookupByLibrary.simpleMessage("内网 IP"),
     "invalidTransferAmount": MessageLookupByLibrary.simpleMessage("请输入有效的划转金额"),
-    "invite": MessageLookupByLibrary.simpleMessage("邀请好友"),
+    "invite": MessageLookupByLibrary.simpleMessage("邀请"),
     "inviteCode": MessageLookupByLibrary.simpleMessage("邀请码"),
     "inviteCodeGenFailed": MessageLookupByLibrary.simpleMessage("邀请码生成失败"),
     "inviteCodeOptional": MessageLookupByLibrary.simpleMessage("邀请码（可选）"),
@@ -977,6 +977,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "xboardNoInternetConnection": MessageLookupByLibrary.simpleMessage(
       "无网络连接，请检查网络设置",
     ),
+    "xboardNoNotice": MessageLookupByLibrary.simpleMessage("暂无公告"),
     "xboardNoSubscriptionInfo": MessageLookupByLibrary.simpleMessage("暂无套餐信息"),
     "xboardNoSubscriptionPlans": MessageLookupByLibrary.simpleMessage("暂无套餐信息"),
     "xboardNodeName": MessageLookupByLibrary.simpleMessage("节点名称"),

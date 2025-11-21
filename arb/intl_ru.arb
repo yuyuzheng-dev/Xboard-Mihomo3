@@ -491,6 +491,7 @@
   "xboardMustUpdate": "Необходимо обновить",
   "xboardUpdateNow": "Обновить сейчас",
   "xboardNoSubscriptionInfo": "Нет информации о подписке",
+  "xboardNoNotice": "Нет уведомлений",
   "xboardLoginToViewSubscription": "Войдите в систему для просмотра использования подписки",
   "xboardNoAvailableSubscription": "Нет доступных подписок",
   "xboardPurchaseSubscriptionToUse": "Купите подписку для использования",

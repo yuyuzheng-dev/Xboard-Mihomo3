@@ -27,19 +27,153 @@ import 'package:fl_clash/xboard/sdk/xboard_sdk.dart'; // 导入域名服务
 // 定义一个全局变量来持有 RemoteTaskManager 实例，方便在整个应用生命周期中访问和管理
 RemoteTaskManager? remoteTaskManager;
 
+
+import 'package:fl_clash/xboard/providers/initialization_provider.dart';
+import 'package:fl_clash/xboard/widgets/scaffold_with_background.dart';
+
 Future<void> main() async {
   globalState.isService = false;
-  WidgetsFlutterBinding.ensureInitialized(); // 确保 Flutter 绑定已初始化
+  WidgetsFlutterBinding.ensureInitialized();
 
-  // 首先初始化XBoard配置模块和域名服务（必须在RemoteTaskManager之前）
-  await _initializeXBoardServices();
+  runApp(ProviderScope(
+    child: InitializationWrapper(),
+  ));
+}
 
-  // 初始化 RemoteTaskManager - 非阻塞模式，失败不影响应用启动
+class InitializationWrapper extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<InitializationWrapper> createState() => _InitializationWrapperState();
+}
+
+class _InitializationWrapperState extends ConsumerState<InitializationWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeXBoardServices(ref);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final initializationState = ref.watch(initializationProvider);
+
+    switch (initializationState.status) {
+      case InitializationStatus.initializing:
+        return const SplashScreen();
+      case InitializationStatus.success:
+        return const Application();
+      case InitializationStatus.error:
+        return ErrorScreen(
+          errorMessage: initializationState.errorMessage,
+          onRetry: () {
+            ref.read(initializationProvider.notifier).setInitializing();
+            _initializeXBoardServices(ref);
+          },
+          retryButtonText: appLocalizations.xboardReload,
+          initializationFailedText: appLocalizations.xboardInitializationFailed,
+          unknownErrorText: appLocalizations.xboardUnknownError,
+        );
+    }
+  }
+}
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+    );
+  }
+}
+
+class ErrorScreen extends StatelessWidget {
+  final String? errorMessage;
+  final VoidCallback onRetry;
+  final String retryButtonText;
+  final String initializationFailedText;
+  final String unknownErrorText;
+
+  const ErrorScreen({
+    super.key,
+    this.errorMessage,
+    required this.onRetry,
+    required this.retryButtonText,
+    required this.initializationFailedText,
+    required this.unknownErrorText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: ScaffoldWithBackground(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '$initializationFailedText: ${errorMessage ?? unknownErrorText}',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onRetry,
+                child: Text(retryButtonText),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _initializeXBoardServices(WidgetRef ref) async {
+  try {
+    print('[Main] 开始初始化XBoard配置模块...');
+    
+    final configSettings = await ConfigFileLoader.loadFromFile();
+    print('[Main] 配置文件加载成功，Provider: ${configSettings.currentProvider}');
+    
+    await _loadSecurityConfig();
+    print('[Main] 安全配置加载成功');
+    
+    await XBoardConfig.initialize(settings: configSettings);
+    print('[Main] XBoard配置模块初始化成功');
+    
+    final sdkConfig = await ConfigFileLoaderHelper.getSdkConfig();
+    final domainConfig = await ConfigFileLoaderHelper.getDomainServiceConfig();
+    
+    await XBoardSDK.initialize(
+      configProvider: XBoardConfig.provider,
+      baseUrl: null,
+      strategy: 'race_fastest',
+    );
+    
+    print('[Main] XBoard SDK初始化成功');
+
+    // All initializations are successful
+    await _initializeServices();
+    ref.read(initializationProvider.notifier).setSuccess();
+    
+  } catch (e) {
+    print('[Main] XBoard服务初始化失败: $e');
+    ref.read(initializationProvider.notifier).setError(e.toString());
+  }
+}
+
+Future<void> _initializeServices() async {
   try {
     remoteTaskManager = await RemoteTaskManager.create();
     if (remoteTaskManager != null) {
-      remoteTaskManager!.initialize(); // 初始化管理器
-      remoteTaskManager!.start(); // 启动 WebSocket 连接
+      remoteTaskManager!.initialize();
+      remoteTaskManager!.start();
       print('RemoteTaskManager 从配置初始化成功');
     } else {
       print('警告: RemoteTaskManager 初始化失败 - 配置中未找到 WebSocket URL，应用将继续启动但远程任务功能不可用');
@@ -53,16 +187,12 @@ Future<void> main() async {
   await clashCore.preload();
   await globalState.initApp(version);
   await android?.init();
-  await window?.init(version); // 假设 window?.init(version) 是正确的调用
+  await window?.init(version);
   HttpOverrides.global = FlClashHttpOverrides();
 
-  // 注册 WidgetsBindingObserver 来监听应用生命周期事件
   WidgetsBinding.instance.addObserver(AppLifecycleObserver());
-
-  runApp(ProviderScope(
-    child: const Application(),
-  ));
 }
+
 
 /// 加载安全配置（证书路径、UA、解密密钥等）
 Future<void> _loadSecurityConfig() async {
@@ -140,6 +270,7 @@ class AppLifecycleObserver extends WidgetsBindingObserver {
   }
 }
 
+
 @pragma('vm:entry-point')
 Future<void> _service(List<String> flags) async {
   globalState.isService = true;
@@ -214,6 +345,7 @@ Future<void> _service(List<String> flags) async {
     });
   }
 }
+
 
 _handleMainIpc(ClashLibHandler clashLibHandler) {
   final sendPort = IsolateNameServer.lookupPortByName(mainIsolate);

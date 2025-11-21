@@ -123,9 +123,15 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
+          onTap: () async {
+            await ref.read(noticeProvider.notifier).fetchNotices();
+            final notices = ref.read(noticeProvider).visibleNotices;
             if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(appLocalizations.xboardNoNotice),
+                ),
+              );
             } else {
               _showNoticesBottomSheet(context, notices);
             }

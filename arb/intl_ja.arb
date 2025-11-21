@@ -491,6 +491,7 @@
   "xboardMustUpdate": "更新必須",
   "xboardUpdateNow": "今すぐ更新",
   "xboardNoSubscriptionInfo": "サブスクリプション情報がありません",
+  "xboardNoNotice": "お知らせはありません",
   "xboardLoginToViewSubscription": "サブスクリプション使用状況を確認するにはログインしてください",
   "xboardNoAvailableSubscription": "利用可能なサブスクリプションがありません",
   "xboardPurchaseSubscriptionToUse": "使用するにはサブスクリプションを購入してください",

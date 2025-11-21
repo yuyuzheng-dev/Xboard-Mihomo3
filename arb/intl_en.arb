@@ -490,6 +490,7 @@
   "xboardMustUpdate": "Must Update",
   "xboardUpdateNow": "Update Now",
   "xboardNoSubscriptionInfo": "No subscription information",
+  "xboardNoNotice": "No notices",
   "xboardLoginToViewSubscription": "Please login to view subscription usage",
   "xboardNoAvailableSubscription": "No available subscription",
   "xboardPurchaseSubscriptionToUse": "Please purchase a subscription to use",

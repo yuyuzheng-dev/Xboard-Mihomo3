@@ -3859,6 +3859,16 @@ class AppLocalizations {
     );
   }
 
+  /// `No notices`
+  String get xboardNoNotice {
+    return Intl.message(
+      'No notices',
+      name: 'xboardNoNotice',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Please login to view subscription usage`
   String get xboardLoginToViewSubscription {
     return Intl.message(

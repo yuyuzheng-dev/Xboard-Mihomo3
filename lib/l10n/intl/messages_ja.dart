@@ -880,6 +880,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "xboardNoInternetConnection": MessageLookupByLibrary.simpleMessage(
       "インターネット接続がありません、ネットワーク設定を確認してください",
     ),
+    "xboardNoNotice": MessageLookupByLibrary.simpleMessage("お知らせはありません"),
     "xboardNoSubscriptionInfo": MessageLookupByLibrary.simpleMessage(
       "サブスクリプション情報がありません",
     ),
