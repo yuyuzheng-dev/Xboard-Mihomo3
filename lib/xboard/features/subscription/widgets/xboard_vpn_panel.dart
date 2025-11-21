@@ -123,11 +123,34 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
+          onTap: () async {
+            // 每次点击都主动刷新公告，确保获取最新内容
+            await ref.read(noticeProvider.notifier).fetchNotices();
+
+            if (!mounted) return;
+
+            final updatedState = ref.read(noticeProvider);
+            final updatedNotices = updatedState.visibleNotices;
+
+            if (updatedState.error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('公告获取失败，请检查网络后重试'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+              return;
+            }
+
+            if (updatedNotices.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('暂无公告'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
             } else {
-              _showNoticesBottomSheet(context, notices);
+              _showNoticesBottomSheet(context, updatedNotices);
             }
           },
           borderRadius: BorderRadius.circular(8),

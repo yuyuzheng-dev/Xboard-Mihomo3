@@ -16,13 +16,9 @@ class DomainStatusService {
 
     try {
       XBoardLogger.info('开始初始化');
-      
-      // 确保V2配置模块已初始化
-      if (!XBoardConfig.isInitialized) {
-        await XBoardConfig.initialize();
-      }
 
-      XBoardLogger.info('V2配置模块初始化成功');
+      // 通过 XBoardSDK.ensureInitialized 间接完成配置模块与 SDK 的初始化
+      await XBoardSDK.ensureInitialized();
 
       _isInitialized = true;
       XBoardLogger.info('初始化完成');
@@ -126,13 +122,11 @@ class DomainStatusService {
   Future<void> _initializeXBoardService(String domain) async {
     try {
       XBoardLogger.info('初始化XBoard服务: $domain');
-      
-      await XBoardSDK.initialize(
-        configProvider: XBoardConfig.provider,
-        baseUrl: domain,
-        strategy: 'first',
-      );
-      
+
+      // 当前应用中 XBoardSDK 的初始化统一由 ensureInitialized 完成，
+      // 这里调用一次即可确保在域名可用时 SDK 已经就绪。
+      await XBoardSDK.ensureInitialized();
+
       XBoardLogger.info('XBoard服务初始化成功');
     } catch (e) {
       XBoardLogger.error('XBoard服务初始化失败', e);
