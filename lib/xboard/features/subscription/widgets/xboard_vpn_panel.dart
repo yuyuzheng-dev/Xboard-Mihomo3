@@ -123,12 +123,15 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
-            } else {
-              _showNoticesBottomSheet(context, notices);
-            }
+          onTap: () async {
+            final notifier = ref.read(noticeProvider.notifier);
+
+            // 每次点击时主动刷新公告，确保内容及时更新
+            await notifier.fetchNotices();
+
+            if (!mounted) return;
+
+            _handleNoticeTapResult(ref);
           },
           borderRadius: BorderRadius.circular(8),
           child: Stack(
@@ -157,6 +160,30 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
         ),
       );
     });
+  }
+
+  void _handleNoticeTapResult(WidgetRef ref) {
+    final updatedState = ref.read(noticeProvider);
+    final updatedNotices = updatedState.visibleNotices;
+
+    if (updatedState.error != null && updatedNotices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('公告加载失败，请稍后重试'),
+        ),
+      );
+      return;
+    }
+
+    if (updatedNotices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('暂无公告'),
+        ),
+      );
+    } else {
+      _showNoticesBottomSheet(context, updatedNotices);
+    }
   }
 
   void _showNoticesBottomSheet(BuildContext context, List<dynamic> notices) {

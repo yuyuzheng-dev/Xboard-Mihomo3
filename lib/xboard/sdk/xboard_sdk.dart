@@ -104,34 +104,6 @@ class XBoardSDK {
   static XBoardClient get _client => XBoardClient.instance;
   static sdk.XBoardSDK get _sdk => _client.sdk;
 
-  // ========== 直接访问底层 SDK API（仅供向后兼容） ==========
-  /// @nodoc 直接访问底层SDK的invite模块
-  static sdk.InviteApi get invite => _sdk.invite;
-  
-  /// @nodoc 直接访问底层SDK的order模块  
-  static sdk.OrderApi get order => _sdk.order;
-  
-  /// @nodoc 直接访问底层SDK的payment模块
-  static sdk.PaymentApi get payment => _sdk.payment;
-  
-  /// @nodoc 直接访问底层SDK的userInfo模块
-  static sdk.UserInfoApi get userInfo => _sdk.userInfo;
-  
-  /// @nodoc 直接访问底层SDK的subscription模块
-  static sdk.SubscriptionApi get subscription => _sdk.subscription;
-  
-  /// @nodoc 直接访问底层SDK的coupon模块
-  static sdk.CouponApi get coupon => _sdk.coupon;
-  
-  /// @nodoc 直接访问底层SDK的balance模块
-  static sdk.BalanceApi get balance => _sdk.balance;
-  
-  /// @nodoc 直接访问底层SDK的notice模块
-  static sdk.NoticeApi get notice => _sdk.notice;
-  
-  /// @nodoc 直接访问底层SDK的app模块
-  static sdk.AppApi get app => _sdk.app;
-
   // ========== 生命周期管理 ==========
 
   /// 初始化 SDK
@@ -233,11 +205,11 @@ class XBoardSDK {
   }) async {
     try {
       final result = await _sdk.resetPassword.resetPassword(
-        email,
-        password,
-        emailCode,
+        email: email,
+        password: password,
+        emailCode: emailCode,
       );
-      return result.data ?? false;
+      return result.success;
     } catch (e) {
       _logger.error('[SDK] 重置密码失败', e);
       return false;
@@ -247,7 +219,7 @@ class XBoardSDK {
   /// 发送验证码
   static Future<bool> sendVerificationCode(String email) async {
     try {
-      final result = await _sdk.sendEmailCode.sendVerificationCode(email);
+      final result = await _sdk.sendEmailCode.sendEmailCode(email);
       return result.success;
     } catch (e) {
       _logger.error('[SDK] 发送验证码失败', e);
@@ -305,8 +277,8 @@ class XBoardSDK {
   /// 获取订阅信息
   static Future<sdk.SubscriptionInfo?> getSubscription() async {
     try {
-      final result = await _sdk.subscription.getSubscriptionLink();
-      return result.data;
+      final result = await _sdk.subscription.getSubscriptionInfo();
+      return result;
     } catch (e) {
       _logger.error('[SDK] 获取订阅信息失败', e);
       return null;
@@ -430,7 +402,7 @@ class XBoardSDK {
   /// 获取邀请信息
   static Future<sdk.InviteInfo?> getInviteInfo() async {
     try {
-      final result = await _sdk.invite.fetchInviteCodes();
+      final result = await _sdk.invite.getInviteInfo();
       return result.data;
     } catch (e) {
       _logger.error('[SDK] 获取邀请信息失败', e);
@@ -598,7 +570,7 @@ class XBoardSDK {
   static Future<List<sdk.Notice>> getNotices() async {
     try {
       final result = await _sdk.notice.fetchNotices();
-      return result.data;
+      return result.data ?? [];
     } catch (e) {
       _logger.error('[SDK] 获取公告列表失败', e);
       return [];
@@ -611,7 +583,7 @@ class XBoardSDK {
   static Future<dynamic> getConfig() async {
     try {
       final result = await _sdk.config.getConfig();
-      return result.data;
+      return result;
     } catch (e) {
       _logger.error('[SDK] 获取配置失败', e);
       return null;
