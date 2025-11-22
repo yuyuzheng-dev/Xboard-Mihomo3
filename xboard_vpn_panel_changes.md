@@ -41,3 +41,33 @@ A navigation issue on the "Invite Friends" screen has been resolved to ensure a 
 - **Navigation Method**: The navigation logic was updated from `context.go('/invite')` to `context.push('/invite')`, enabling proper screen stacking and intuitive back navigation.
 
 This fix ensures a consistent and predictable navigation experience, preventing accidental app exits.
+
+## 4. Removed Initial "Important Notice" Popup
+
+Previously, when the application started for the first time, it would display a blocking "重要提示" (Important Notice) dialog and require the user to agree before continuing.
+
+### Changes:
+
+- The startup initialization in `AppController.init()` no longer calls the `_handlerDisclaimer()` method.
+- The Important Notice dialog (`showDisclaimer()`) remains available from **Tools → Other → Important Notice**, so users can still open and read it manually when needed.
+
+This change removes friction during first launch while keeping the disclaimer accessible from the tools section.
+
+## 5. VPN Panel Announcement Badge & Auto-Fetch
+
+The announcement entry in the top-left corner of the VPN panel now automatically checks for available notices and reflects their presence with a red indicator dot.
+
+### Changes:
+
+- **Automatic Fetch on Panel Load**  
+  - When `XBoardVpnPanel` is initialized, it triggers `noticeProvider.fetchNotices()` once after the first frame if no notices have been loaded yet.  
+  - The red dot is now driven by the `visibleNotices` list, so it lights up automatically whenever there are announcements, without requiring a manual tap.
+
+- **Improved Tap Behavior**  
+  - Tapping the announcement icon now behaves as follows:  
+    - If notices are currently loading, a lightweight "loading" SnackBar is shown.  
+    - If there are no notices, the panel will attempt to fetch them once more.  
+    - If after fetching there are still no announcements, a SnackBar with the message **"暂无公告"** ("No announcements at the moment") is displayed.  
+    - If announcements are available, the existing bottom sheet with `NoticeDetailDialog` is opened to display them.
+
+These improvements ensure that announcement status is always checked automatically when entering the VPN panel, while providing clear feedback when no announcements are available.

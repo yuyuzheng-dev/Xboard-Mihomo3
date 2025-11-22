@@ -104,7 +104,11 @@ class XBoardClient {
 
       // 初始化 SDK（传递 httpConfig）
       _sdk = XBoardSDK.instance;
-      await _sdk!.initialize(panelUrl, httpConfig: httpConfig);
+      await _sdk!.initialize(
+        panelUrl,
+        panelType: 'xboard',
+        httpConfig: httpConfig,
+      );
       _currentPanelUrl = panelUrl;
 
       _isInitialized = true;

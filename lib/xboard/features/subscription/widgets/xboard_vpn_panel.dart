@@ -30,6 +30,13 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
   void initState() {
     super.initState();
     isStart = globalState.appState.runTime != null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final noticeState = ref.read(noticeProvider);
+      if (!noticeState.isLoading && noticeState.visibleNotices.isEmpty) {
+        ref.read(noticeProvider.notifier).fetchNotices();
+      }
+    });
   }
 
   void _handleToggle() {
@@ -123,11 +130,36 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
+          onTap: () async {
+            final notifier = ref.read(noticeProvider.notifier);
+            var state = ref.read(noticeProvider);
+            var currentNotices = state.visibleNotices;
+
+            if (state.isLoading) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(AppLocalizations.of(context).loading),
+                ),
+              );
+              return;
+            }
+
+            if (currentNotices.isEmpty) {
+              await notifier.fetchNotices();
+              state = ref.read(noticeProvider);
+              currentNotices = state.visibleNotices;
+
+              if (currentNotices.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('暂无公告'),
+                  ),
+                );
+              } else {
+                _showNoticesBottomSheet(context, currentNotices);
+              }
             } else {
-              _showNoticesBottomSheet(context, notices);
+              _showNoticesBottomSheet(context, currentNotices);
             }
           },
           borderRadius: BorderRadius.circular(8),
