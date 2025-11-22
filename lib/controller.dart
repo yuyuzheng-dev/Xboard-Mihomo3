@@ -621,7 +621,6 @@ class AppController {
       window?.hide();
     }
     await _handlePreference();
-    await _handlerDisclaimer();
     _ref.read(initProvider.notifier).value = true;
   }
 

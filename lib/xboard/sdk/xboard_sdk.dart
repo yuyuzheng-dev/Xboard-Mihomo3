@@ -104,34 +104,6 @@ class XBoardSDK {
   static XBoardClient get _client => XBoardClient.instance;
   static sdk.XBoardSDK get _sdk => _client.sdk;
 
-  // ========== 直接访问底层 SDK API（仅供向后兼容） ==========
-  /// @nodoc 直接访问底层SDK的invite模块
-  static sdk.InviteApi get invite => _sdk.invite;
-  
-  /// @nodoc 直接访问底层SDK的order模块  
-  static sdk.OrderApi get order => _sdk.order;
-  
-  /// @nodoc 直接访问底层SDK的payment模块
-  static sdk.PaymentApi get payment => _sdk.payment;
-  
-  /// @nodoc 直接访问底层SDK的userInfo模块
-  static sdk.UserInfoApi get userInfo => _sdk.userInfo;
-  
-  /// @nodoc 直接访问底层SDK的subscription模块
-  static sdk.SubscriptionApi get subscription => _sdk.subscription;
-  
-  /// @nodoc 直接访问底层SDK的coupon模块
-  static sdk.CouponApi get coupon => _sdk.coupon;
-  
-  /// @nodoc 直接访问底层SDK的balance模块
-  static sdk.BalanceApi get balance => _sdk.balance;
-  
-  /// @nodoc 直接访问底层SDK的notice模块
-  static sdk.NoticeApi get notice => _sdk.notice;
-  
-  /// @nodoc 直接访问底层SDK的app模块
-  static sdk.AppApi get app => _sdk.app;
-
   // ========== 生命周期管理 ==========
 
   /// 初始化 SDK
