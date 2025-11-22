@@ -416,6 +416,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "noNetwork": MessageLookupByLibrary.simpleMessage("无网络"),
     "noNetworkApp": MessageLookupByLibrary.simpleMessage("无网络应用"),
     "noProxy": MessageLookupByLibrary.simpleMessage("暂无代理"),
+    "noNotices": MessageLookupByLibrary.simpleMessage("暂无公告"),
     "noProxyDesc": MessageLookupByLibrary.simpleMessage("请创建配置文件或者添加有效配置文件"),
     "noResolve": MessageLookupByLibrary.simpleMessage("不解析IP"),
     "none": MessageLookupByLibrary.simpleMessage("无"),

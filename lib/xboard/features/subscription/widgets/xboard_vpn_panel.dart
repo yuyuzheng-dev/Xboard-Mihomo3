@@ -123,11 +123,24 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       return Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
+          onTap: () async {
+            // Always refresh notices when clicking the button
+            await ref.read(noticeProvider.notifier).fetchNotices();
+            
+            final updatedState = ref.read(noticeProvider);
+            if (updatedState.visibleNotices.isEmpty) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context).noNotices),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             } else {
-              _showNoticesBottomSheet(context, notices);
+              if (context.mounted) {
+                _showNoticesBottomSheet(context, updatedState.visibleNotices);
+              }
             }
           },
           borderRadius: BorderRadius.circular(8),

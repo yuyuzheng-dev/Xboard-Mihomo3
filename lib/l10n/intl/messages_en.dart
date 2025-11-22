@@ -605,6 +605,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "noNetwork": MessageLookupByLibrary.simpleMessage("No network"),
     "noNetworkApp": MessageLookupByLibrary.simpleMessage("No network APP"),
     "noProxy": MessageLookupByLibrary.simpleMessage("No proxy"),
+    "noNotices": MessageLookupByLibrary.simpleMessage("No announcements"),
     "noProxyDesc": MessageLookupByLibrary.simpleMessage(
       "Please create a profile or add a valid profile",
     ),

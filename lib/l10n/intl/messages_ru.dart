@@ -489,6 +489,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "noNetwork": MessageLookupByLibrary.simpleMessage("Нет сети"),
     "noNetworkApp": MessageLookupByLibrary.simpleMessage("Приложение без сети"),
     "noProxy": MessageLookupByLibrary.simpleMessage("Нет прокси"),
+    "noNotices": MessageLookupByLibrary.simpleMessage("Нет объявлений"),
     "noProxyDesc": MessageLookupByLibrary.simpleMessage(
       "Пожалуйста, создайте профиль или добавьте действительный профиль",
     ),

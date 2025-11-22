@@ -349,6 +349,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "noNetwork": MessageLookupByLibrary.simpleMessage("ネットワークなし"),
     "noNetworkApp": MessageLookupByLibrary.simpleMessage("ネットワークなしアプリ"),
     "noProxy": MessageLookupByLibrary.simpleMessage("プロキシなし"),
+    "noNotices": MessageLookupByLibrary.simpleMessage("お知らせなし"),
     "noProxyDesc": MessageLookupByLibrary.simpleMessage(
       "プロファイルを作成するか、有効なプロファイルを追加してください",
     ),

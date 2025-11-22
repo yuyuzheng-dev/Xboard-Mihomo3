@@ -184,6 +184,11 @@ class AppLocalizations {
     return Intl.message('No proxy', name: 'noProxy', desc: '', args: []);
   }
 
+  /// `No announcements`
+  String get noNotices {
+    return Intl.message('No announcements', name: 'noNotices', desc: '', args: []);
+  }
+
   /// `Please create a profile or add a valid profile`
   String get noProxyDesc {
     return Intl.message(
