@@ -240,6 +240,22 @@ class XBoardUserAuthNotifier extends Notifier<UserAuthState> {
     state = const UserAuthState(isInitialized: true);
   }
 
+  /// 标记初始化超时，允许用户在登录页重试
+  void markInitializationTimeout() {
+    commonPrint.log('初始化超时，标记为已初始化以显示登录页');
+    state = state.copyWith(
+      isInitialized: true,
+      errorMessage: 'INIT_TIMEOUT',
+    );
+  }
+
+  /// 清除初始化超时错误
+  void clearInitializationTimeout() {
+    if (state.errorMessage == 'INIT_TIMEOUT') {
+      state = state.copyWith(errorMessage: null);
+    }
+  }
+
   Future<bool> autoAuth() async {
     return await quickAuth();
   }

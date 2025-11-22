@@ -93,13 +93,14 @@ class ApplicationState extends ConsumerState<Application> {
     Future.microtask(() async {
       try {
         print('[Application] 开始使用新域名服务进行快速认证检查...');
-        
+
         // 优先获取Flclash入口域名
         String? entryDomain;
-        
+
         try {
-          // 使用竞速方式获取最快的入口域名
-          entryDomain = await XBoardConfig.getFastestPanelUrl();
+          // 使用竞速方式获取最快的入口域名（带30秒超时）
+          entryDomain = await XBoardConfig.getFastestPanelUrl()
+              .timeout(const Duration(seconds: 30));
           print('[Application] 竞速获取到最快Flclash入口域名: $entryDomain');
         } catch (e) {
           print('[Application] 竞速获取域名失败，尝试传统方式: $e');
@@ -112,16 +113,24 @@ class ApplicationState extends ConsumerState<Application> {
             entryDomain = null;
           }
         }
-        
+
         final userNotifier = ref.read(xboardUserProvider.notifier);
-        await userNotifier.quickAuth();
-        
-        // 强制刷新UI，确保_AppHomeRouter能够响应最新的认证状态
+        // 执行快速认证，带20秒超时保护
+        try {
+          await userNotifier.quickAuth()
+              .timeout(const Duration(seconds: 20));
+          print('[Application] 快速认证检查完成');
+        } on TimeoutException {
+          print('[Application] 快速认证超时（20秒）');
+          // 标记初始化失败但保持应用可用
+          userNotifier.markInitializationTimeout();
+        }
+
+        // 强制刷新UI，确保路由能够响应最新的认证状态
         if (mounted) {
           setState(() {});
         }
-        
-        print('[Application] 快速认证检查完成');
+
       } catch (e) {
         print('[Application] 快速认证检查失败: $e');
         // 即使认证检查失败，也要确保UI能正常显示

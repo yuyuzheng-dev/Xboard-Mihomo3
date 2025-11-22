@@ -119,16 +119,38 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
       final noticeState = ref.watch(noticeProvider);
       final notices = noticeState.visibleNotices;
       final hasNotices = notices.isNotEmpty;
+      final isLoading = noticeState.isLoading;
 
       return Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            if (notices.isEmpty) {
-              ref.read(noticeProvider.notifier).fetchNotices();
-            } else {
-              _showNoticesBottomSheet(context, notices);
-            }
+            // Always fetch fresh notice data when tapped
+            ref.read(noticeProvider.notifier).fetchNotices().then((_) {
+              // Check if widget is still mounted before accessing context
+              if (!context.mounted) return;
+              
+              // After fetching, check if we have notices
+              final updatedNoticeState = ref.read(noticeProvider);
+              final updatedNotices = updatedNoticeState.visibleNotices;
+              
+              if (updatedNotices.isEmpty) {
+                // Show "No notices" message
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('暂无公告'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } else {
+                // Show notices bottom sheet
+                if (context.mounted) {
+                  _showNoticesBottomSheet(context, updatedNotices);
+                }
+              }
+            });
           },
           borderRadius: BorderRadius.circular(8),
           child: Stack(
@@ -139,7 +161,7 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
                 size: 20,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              if (hasNotices)
+              if (hasNotices && !isLoading)
                 Positioned(
                   top: -4,
                   right: -4,
@@ -149,6 +171,21 @@ class _XBoardVpnPanelState extends ConsumerState<XBoardVpnPanel> {
                     decoration: const BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              if (isLoading)
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ),
                 ),
